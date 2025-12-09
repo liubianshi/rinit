@@ -1,0 +1,23 @@
+configfile: "config.yaml"
+
+rule all:
+    input:
+        "results/figures/plot.pdf"
+
+rule analysis:
+    input:
+        "data/processed/data.csv",
+        script = "R/analysis/01_regressions.R"
+    output:
+        "results/models/model.rds"
+    shell:
+        "Rscript {input.script}"
+
+rule figures:
+    input:
+        "results/models/model.rds",
+        script = "R/analysis/02_figures.R"
+    output:
+        "results/figures/plot.pdf"
+    shell:
+        "Rscript {input.script}"

@@ -1,0 +1,40 @@
+# Golden rule: ignore all generated outputs
+/out/
+/gen/
+/log/
+/cache/
+
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+
+# R language specific
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.Renviron
+library/
+renv/library/
+renv/python/
+renv/staging/
+
+# LaTeX auxiliary files
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# DVC (Data Version Control)
+/data/
+.dvc/cache
+/data/*.dvc
+
+# Sensitive information
+*.key
+*.token
