@@ -15,7 +15,7 @@ This project follows a reproducible research workflow.
    - Otherwise, ensure raw data is in `/data` directory.
 4. **Run Analysis**:
    - Execute main script: `source("R/main.R")`
-   - Or use Snakemake: `snakemake`
+   - Or use task: `task`
 
 ## Directory Structure
 

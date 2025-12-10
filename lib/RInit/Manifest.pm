@@ -22,6 +22,33 @@ project initialization, including metadata selection and file transformations.
 
 =cut
 
+=head2 get_dirs
+
+Returns a list of directories to be created for the project.
+
+    my $dirs = RInit::Manifest->get_dirs($project_name, $variant);
+
+Parameters:
+    $class        - Class name (method called as class method)
+    $project_name - Name of the project being initialized (unused)
+    $variant      - Language/variant code (unused)
+
+Returns:
+    ArrayRef of directory paths to create
+
+=cut
+
+sub get_dirs {
+  my ( $class, $project_name, $variant ) = @_;
+  
+  # Return standard R project directory structure
+  return [
+    'raw',         'R/import',       'R/build',   'R/analysis', 'R/check',
+    'R/utils',     'R/lib',          'doc',       'out/data',   'out/tables',
+    'out/figures', 'out/manuscript', 'log',       'cache',      '.pandoc'
+  ];
+}
+
 =head2 get_files
 
 Retrieves and processes template files for project initialization.
@@ -39,41 +66,15 @@ Returns:
         - source:  Source path of the template file
         - process: Optional code ref for content transformation
 
-=cut
-
-=head2 get_dirs
-
-Returns a list of directories to be created for the project.
-
-    my $dirs = RInit::Manifest->get_dirs($project_name, $variant);
+Dies if the share directory cannot be found.
 
 =cut
-
-sub get_dirs {
-  my ( $class, $project_name, $variant ) = @_;
-  return [
-    'raw',
-    'R/import',
-    'R/build',
-    'R/analysis',
-    'R/check',
-    'R/utils',
-    'R/lib',
-    'doc',
-    'out/data',
-    'out/tables',
-    'out/figures',
-    'out/manuscript',
-    'log',
-    'cache',
-    '.pandoc'
-  ];
-}
 
 sub get_files {
   my ( $class, $project_name, $variant ) = @_;
   $variant ||= 'en';
 
+  # Locate the template directory
   my $share_dir = _find_share_dir();
   die "Cannot find 'share' template directory at $share_dir" unless -d $share_dir;
 
@@ -89,12 +90,14 @@ sub get_files {
     # Skip metadata files (handled separately below)
     return if $rel_path =~ m{^metadata/};
 
+    # Determine target filename
     my $target = $rel_path;
+    $target = '.gitignore' if $target eq 'gitignore';  # Rename for proper dotfile handling
 
-    # Rename gitignore to .gitignore for proper dotfile handling
-    $target = '.gitignore' if $target eq 'gitignore';
-
-    my $file_def = { target => $target, source => $abs_path, };
+    my $file_def = {
+      target => $target,
+      source => $abs_path,
+    };
 
     # Add content processor for README.md to substitute project name
     if ( $target eq 'README.md' ) {
@@ -108,6 +111,7 @@ sub get_files {
     push @files, $file_def;
   };
 
+  # Traverse the share directory to collect files
   find( $loader, $share_dir );
 
   # Add variant-specific metadata file
@@ -132,9 +136,10 @@ sub get_files {
 Locates the share directory containing template files.
 
 Searches in the following order:
-    1. RINIT_SHARE_DIR environment variable
-    2. Development directory (walks up from current file)
-    3. Installed distribution directory (via File::ShareDir)
+    1. User data directory (XDG_DATA_HOME or ~/.local/share)
+    2. RINIT_SHARE_DIR environment variable
+    3. Development directory (walks up from current file)
+    4. Installed distribution directory (via File::ShareDir)
 
 Returns:
     String path to the share directory
@@ -145,90 +150,122 @@ Dies if the share directory cannot be located.
 
 sub _find_share_dir {
 
-  # 1. Check environment variable override
-  return $ENV{RINIT_SHARE_DIR}
-    if $ENV{RINIT_SHARE_DIR} && _is_valid_share($ENV{RINIT_SHARE_DIR});
+  # Define search strategies in priority order
+  my @strategies = (
+    \&_check_user_share,
+    \&_check_env_share,
+    \&_check_dev_share,
+    \&_check_dist_share,
+  );
 
-  # 2. Development mode: walk up directory tree to find share/ with Makefile.PL
-  # Use abs_path to ensure we are dealing with absolute paths, protecting against
-  # issues where __FILE__ is relative and the current working directory changes.
-  my $dir = abs_path(dirname(__FILE__));
-  my @checked_dirs;
-
-  while ( $dir && $dir ne '/' && $dir !~ m{^[a-z]:[/\\]?$}i ) {
-    my $candidate = File::Spec->catdir( $dir, 'share' );
-    
-    push @checked_dirs, $candidate;
-
-    # Verify this is a development directory by checking for Makefile.PL and valid share
-    if ( -d $candidate && -f File::Spec->catfile( $dir, 'Makefile.PL' ) && _is_valid_share($candidate) ) {
-      return $candidate;
-    }
-
-    my $parent = dirname($dir);
-    last if $parent eq $dir;    # Reached filesystem root
-    $dir = $parent;
-  }
-
-  # 2b. Check current working directory and parents (useful when running from repo root)
-  my $cwd_dir = abs_path(getcwd());
-  while ( $cwd_dir && $cwd_dir ne '/' && $cwd_dir !~ m{^[a-z]:[/\\]?$}i ) {
-    my $candidate = File::Spec->catdir( $cwd_dir, 'share' );
-    if ( _is_valid_share($candidate) ) {
-      return $candidate;
-    }
-    my $parent = dirname($cwd_dir);
-    last if $parent eq $cwd_dir;
-    $cwd_dir = $parent;
-  }
-
-  # 3. Installed distribution: use File::ShareDir if available
-  eval { require File::ShareDir; };
-  unless ($@) {
-    my $dist_dir = eval { File::ShareDir::dist_dir('RInit') };
-    if ( $dist_dir && _is_valid_share($dist_dir) ) {
-        return $dist_dir;
+  # Try each strategy until a valid share directory is found
+  for my $strategy (@strategies) {
+    if ( my $dir = $strategy->() ) {
+      return $dir if _is_valid_share($dir);
     }
   }
 
-  # 4. Fallback: Check standard system locations
-  for my $sys_dir ( '/usr/local/share/rinit', '/usr/share/rinit' ) {
-      if ( _is_valid_share($sys_dir) ) {
-          return $sys_dir;
-      }
-      push @checked_dirs, $sys_dir;
-  }
-
-  # 5. Fallback: Check for auto/share/dist/RInit relative to typical lib paths
-  # This handles cases where File::ShareDir fails but the files are in the standard perl location
-  for my $inc_path (@INC) {
-      my $auto_share = File::Spec->catdir($inc_path, 'auto', 'share', 'dist', 'RInit');
-      if ( _is_valid_share($auto_share) ) {
-          return $auto_share;
-      }
-      push @checked_dirs, $auto_share;
-  }
-
-  # 6. Fallback: Check relative to the executing script ($0)
-  # This helps when the module is loaded from @INC (e.g. installed lib) 
-  # but the script is running from the repo bin/ or a known location where share/ is nearby.
-  my $script_dir = abs_path(dirname($0));
-  my $script_based_share = File::Spec->catdir($script_dir, '..', 'share');
-  push @checked_dirs, $script_based_share;
-  
-  if ( _is_valid_share($script_based_share) ) {
-      return $script_based_share;
-  }
-  
-  my $checked_str = join("\n  ", @checked_dirs);
-  die "Could not locate 'share' directory.\nChecked locations:\n  $checked_str\nSet RINIT_SHARE_DIR or install properly.\n";
+  # No valid share directory found
+  die "Could not locate 'share' directory.\n"
+    . "Checked: User data dir, RINIT_SHARE_DIR, Development path, and File::ShareDir.\n";
 }
 
+=head2 _check_user_share
+
+Checks for share directory in user's data directory.
+
+Returns:
+    String path to user share directory or undef
+
+=cut
+
+sub _check_user_share {
+  my $xdg_data_home = $ENV{XDG_DATA_HOME} || File::Spec->catdir( $ENV{HOME}, '.local', 'share' );
+  return File::Spec->catdir( $xdg_data_home, 'Rinit' );
+}
+
+=head2 _check_env_share
+
+Checks for share directory via RINIT_SHARE_DIR environment variable.
+
+Returns:
+    String path from environment variable or undef
+
+=cut
+
+sub _check_env_share {
+  return $ENV{RINIT_SHARE_DIR};
+}
+
+=head2 _check_dev_share
+
+Checks for share directory in development tree.
+
+Walks up from the current file location to find a share/ directory
+adjacent to Makefile.PL (indicating project root).
+
+Returns:
+    String path to development share directory or undef
+
+=cut
+
+sub _check_dev_share {
+
+  # Walk up from current file to find share/ with Makefile.PL
+  my $dir = abs_path( dirname(__FILE__) );
+  
+  while ( $dir && $dir ne '/' && $dir !~ m{^[a-z]:[/\\]?$}i ) {
+    my $candidate = File::Spec->catdir( $dir, 'share' );
+
+    # Check for Makefile.PL to confirm it's a project root
+    if ( -d $candidate && -f File::Spec->catfile( $dir, 'Makefile.PL' ) ) {
+      return $candidate;
+    }
+
+    # Move up one directory level
+    my $parent = dirname($dir);
+    last if $parent eq $dir;  # Reached filesystem root
+    $dir = $parent;
+  }
+  
+  return undef;
+}
+
+=head2 _check_dist_share
+
+Checks for share directory in installed distribution.
+
+Uses File::ShareDir to locate the installed share directory.
+
+Returns:
+    String path to distribution share directory or undef
+
+=cut
+
+sub _check_dist_share {
+  eval { require File::ShareDir; };
+  return if $@;
+  return eval { File::ShareDir::dist_dir('RInit') };
+}
+
+=head2 _is_valid_share
+
+Validates that a directory is a valid share directory.
+
+Parameters:
+    $dir - Directory path to validate
+
+Returns:
+    Boolean - true if directory contains required structure
+
+=cut
+
 sub _is_valid_share {
-    my ($dir) = @_;
-    return 0 unless -d $dir;
-    # Check for specific files/dirs that must exist in our share directory
-    return -d File::Spec->catdir($dir, 'metadata');
+  my ($dir) = @_;
+  return 0 unless -d $dir;
+
+  # Check for specific subdirectories that must exist in our share directory
+  return -d File::Spec->catdir( $dir, 'metadata' );
 }
 
 1;

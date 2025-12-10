@@ -10,20 +10,26 @@ use strict;
 use warnings;
 
 # Force manual postamble to ensure dotfiles (.pandoc) are installed
-no warnings 'redefine';
-*postamble = sub {
+sub postamble {
     my $share_src = 'share';
     
     return <<"MAKE_FRAG";
 install ::
 \t\$(NOECHO) \$(ECHO) "Manually installing share directory..."
-\t\$(MKPATH) \$(DESTINSTALLSITELIB)/auto/share/dist/\$(DISTNAME)
-\t\$(CP) -rf $share_src/. \$(DESTINSTALLSITELIB)/auto/share/dist/\$(DISTNAME)/
-\t\$(NOECHO) \$(ECHO) "Share directory installed to \$(DESTINSTALLSITELIB)/auto/share/dist/\$(DISTNAME)"
-\t\$(CHMOD) -R u+w \$(DESTINSTALLSITELIB)/auto/share/dist/\$(DISTNAME)
+\tID=\$\$(id -u); \\
+\tif [ "\$\$ID" -eq 0 ] && [ -n "\$\$SUDO_USER" ]; then \\
+\t\tUSER_HOME=\$\$(eval echo ~\$\$SUDO_USER); \\
+\telse \\
+\t\tUSER_HOME=\$(HOME); \\
+\tfi; \\
+\tSHARE_DIR="\$\${XDG_DATA_HOME:-\$\$USER_HOME/.local/share}/Rinit"; \\
+\t\$(MKPATH) "\$\$SHARE_DIR"; \\
+\t\$(CP) -rf $share_src/. "\$\$SHARE_DIR/"; \\
+\t\$(ECHO) "Share directory installed to \$\$SHARE_DIR"; \\
+\t\$(CHMOD) -R u+w "\$\$SHARE_DIR"
 
 MAKE_FRAG
-};
+}
 package main;
 
 

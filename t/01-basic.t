@@ -11,10 +11,10 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use RInit::App;
 
-plan tests => 5;
+# plan tests => 5;
 
 # Create a temporary directory for the test
-my $temp_dir = tempdir( CLEANUP => 1 );
+my $temp_dir     = tempdir( CLEANUP => 1 );
 my $original_cwd = getcwd();
 
 # Switch to temp directory
@@ -24,31 +24,39 @@ chdir($temp_dir) or die "Cannot chdir to $temp_dir: $!";
 my $project_name = "TestProject";
 
 # Run the application (mocking arguments)
-# We need to capture stdout/stderr to avoid cluttering test output, 
+# We need to capture stdout/stderr to avoid cluttering test output,
 # but for simplicity in this basic test we'll just let it print or redirect if needed.
 # To properly test, we might want to capture output, but checking file existence is more critical.
-
 
 # Validating results
 # App.pm changes directory to the created project, so we verify files relative to the new CWD
 # or we can check absolute paths.
 
-eval {
-    RInit::App->run($project_name);
-};
-if ($@) {
-    diag("Error running App: $@");
+# Handle the prompt by mocking STDIN with "n" (skip subtree)
+{
+  open my $stdin, '<', \ "n\n";
+  local *STDIN = $stdin;
+  eval { RInit::App->run($project_name); };
 }
-ok(!$@, "App ran without dying");
+if ($@) {
+  diag("Error running App: $@");
+}
+ok( !$@, "App ran without dying" );
 
-my $db_name = basename(getcwd());
-is($db_name, $project_name, "Changed directory to project dir");
+# The application should NOT change the CWD of the caller.
+# So we need to manually enter the project directory to verify its contents.
+chdir($project_name) or die "Cannot chdir to $project_name: $!";
+my $db_name = basename( getcwd() );
+is( $db_name, $project_name, "Verified we are in project dir" );
 
-ok(-f "R/main.R", "R/main.R created");
-ok(-f "R/setup_env.R", "R/setup_env.R created");
-ok(-f ".Rprofile", ".Rprofile created");
+ok( -f "R/main.R",      "R/main.R created" );
+ok( -f "R/setup_env.R", "R/setup_env.R created" );
+ok( -f ".Rprofile",     ".Rprofile created" );
+ok( -f ".Renviron",     ".Renviron created" );
+ok( -f "taskfile.yml",     "taskfile.yml created" );
 
-
-# Cleanup happens automatically via tempdir CLEANUP => 1, 
+# Cleanup happens automatically via tempdir CLEANUP => 1,
 # but we should change back to original execution directory first just in case
 chdir($original_cwd);
+
+done_testing();
