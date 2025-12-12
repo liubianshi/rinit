@@ -1,0 +1,98 @@
+# Project-level .Rprofile
+# This file is executed when R starts in this project directory
+
+# First, source user-level .Rprofile if it exists (to preserve user settings)
+if (file.exists("~/.Rprofile")) {
+  source("~/.Rprofile")
+}
+
+# General R options
+options(
+  stringsAsFactors = FALSE,
+  max.print = 100,
+  scipen = 10,
+  width = 120,
+  box.path = c(file.path(getwd(), "r-box"), getwd())
+)
+
+# Activate renv if available
+if (file.exists("renv/activate.R")) {
+  source("renv/activate.R")
+}
+
+# ENVIRONMENT VARIABLE
+METADATA <- yaml::read_yaml("_metadata.yml")
+CONFIG <- yaml::read_yaml("config.yml")
+PROJECT_NAME <- METADATA$project_name
+Sys.setenv(PROJECT_NAME = PROJECT_NAME)
+
+#' Cache Function Results
+cache_result <- function(type, name, update = NULL) {
+  box::use(utils/logger[logger_factory])
+  logger <- logger_factory("cache")
+  # Retrieve cache metadata from config
+  info <- CONFIG$cache[[type]][[name]]
+
+  # Validate metadata exists
+  if (is.null(info)) {
+    logger$error("元信息缺失")
+    return(invisible(NULL))
+  }
+
+  if (is.null(update)) {
+    update <- info$update
+  }
+
+  if (!dir.exists(glue::glue("cache/{type}"))) {
+    dir.create(glue::glue("cache/{type}"), recursive = TRUE)
+  }
+  target_path <- glue::glue("cache/{type}/{name}.qs")
+  args <- lbs::ifthen(info$args, list())
+
+  # Load caching utility
+  box::use(utils/cache[cache_result = result])
+
+  re <- NULL
+  # Execute function and cache results
+  # Note: 'args' should be defined in the calling environment or passed as parameter
+  tryCatch(
+    {
+      re <- cache_result(
+        {
+          # Dynamically load the specified module and function
+          tryCatch(
+            {
+              parse(text = sprintf("box::use(%s[%s])", info$mod, info$func)) |> eval(envir = parent.frame())
+            },
+            error = function(e) {
+              logger$error(glue::glue("Failed to load module {info$mod}: {e$message}"))
+              return(invisible(NULL))
+            }
+          )
+
+          # Retrieve the function from the loaded module
+          func <- get(info$func, envir = parent.frame())
+
+          do.call(func, args)
+        },
+        target_path,
+        update
+      )
+      logger$info(glue::glue("`cache:{type}:{name}` cached successfully in `{target_path}`"))
+    },
+    error = function(e) {
+      logger$error(glue::glue("Caching failed for {type}.{name}: {e$message}"))
+    }
+  )
+
+  invisible(re)
+}
+
+fetch_cached <- function(type, name) {
+  cache_result(type, name, update = FALSE)
+}
+
+# Project startup message
+packageStartupMessage(
+  paste0("\n", "✓ Project loaded: ", PROJECT_NAME, "\n", "✓ Working directory: ", getwd(), "\n")
+)

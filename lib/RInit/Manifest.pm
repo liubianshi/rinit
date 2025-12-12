@@ -40,12 +40,12 @@ Returns:
 
 sub get_dirs {
   my ( $class, $project_name, $variant ) = @_;
-  
+
   # Return standard R project directory structure
   return [
-    'raw',         'R/import',       'R/build',   'R/analysis', 'R/check',
-    'R/utils',     'R/lib',          'doc',       'out/data',   'out/tables',
-    'out/figures', 'out/manuscript', 'log',       'cache',      '.pandoc'
+    'raw',         'R/import',       'R/build', 'R/analysis', 'R/check',
+    'R/utils',     'R/lib',          'doc',     'out/data',   'out/tables',
+    'out/figures', 'out/manuscript', 'log',     'cache',      '.pandoc'
   ];
 }
 
@@ -92,7 +92,9 @@ sub get_files {
 
     # Determine target filename
     my $target = $rel_path;
-    $target = '.gitignore' if $target eq 'gitignore';  # Rename for proper dotfile handling
+    $target = '.gitignore' if $target eq 'gitignore';    # Rename for proper dotfile handling
+    $target = '.Rprofile'  if $target eq 'Rprofile';     # Rename for proper dotfile handling
+    $target = ".$target"   if $target =~ "^pandoc[/]";
 
     my $file_def = {
       target => $target,
@@ -118,11 +120,15 @@ sub get_files {
   my $metadata_file = File::Spec->catfile( $share_dir, 'metadata', "metadata_${variant}.yml" );
 
   if ( -f $metadata_file ) {
-    push @files,
-      {
-        target => '_metadata.yml',
-        source => $metadata_file,
-      };
+    push @files, {
+      target  => '_metadata.yml',
+      source  => $metadata_file,
+      process => sub {
+        my ($content) = @_;
+        $content =~ s/__PROJECT_NAME__/$project_name/g;
+        return $content;
+      }
+    };
   }
   else {
     warn "Metadata file for variant '$variant' not found at $metadata_file\n";
@@ -151,12 +157,7 @@ Dies if the share directory cannot be located.
 sub _find_share_dir {
 
   # Define search strategies in priority order
-  my @strategies = (
-    \&_check_user_share,
-    \&_check_env_share,
-    \&_check_dev_share,
-    \&_check_dist_share,
-  );
+  my @strategies = ( \&_check_user_share, \&_check_env_share, \&_check_dev_share, \&_check_dist_share, );
 
   # Try each strategy until a valid share directory is found
   for my $strategy (@strategies) {
@@ -213,7 +214,7 @@ sub _check_dev_share {
 
   # Walk up from current file to find share/ with Makefile.PL
   my $dir = abs_path( dirname(__FILE__) );
-  
+
   while ( $dir && $dir ne '/' && $dir !~ m{^[a-z]:[/\\]?$}i ) {
     my $candidate = File::Spec->catdir( $dir, 'share' );
 
@@ -224,10 +225,10 @@ sub _check_dev_share {
 
     # Move up one directory level
     my $parent = dirname($dir);
-    last if $parent eq $dir;  # Reached filesystem root
+    last if $parent eq $dir;    # Reached filesystem root
     $dir = $parent;
   }
-  
+
   return undef;
 }
 

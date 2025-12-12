@@ -1,12 +1,13 @@
 ---
+project_name: __PROJECT_NAME__
 lang: zh
 crossref:
-  eq-prefix: ''
-  fig-prefix: ''
-  fig-title: '图'
+  eq-prefix: ""
+  fig-prefix: ""
+  fig-title: 图
   ref-hyperlink: false
-  tbl-prefix: ''
-  tbl-title: '表'
+  tbl-prefix: ""
+  tbl-title: 表
 execute:
   echo: false
   error: false
@@ -18,11 +19,12 @@ execute:
 fig-asp: 0.75
 fig-dpi: 600
 fig-width: 6
-fig-align: 'center'
-csl: "template/csl/apa.csl"
+fig-align: center
+csl: .pandoc/china-national-standard-gb-t-7714-2015-author-date.csl
 format:
   html:
-    df-print: "default"
+    df-print: default
   docx:
-    df-print: 'default'
-    reference-doc: "template/docx/custom-reference-zh.docx"
+    df-print: default
+    reference-doc: .pandoc/templates/academic-reference-zh.docx
+    bibliography: reference.bib

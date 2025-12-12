@@ -1,12 +1,13 @@
 ---
+project_name: __PROJECT_NAME__
 lang: en
 crossref:
-  eq-prefix: ''
-  fig-prefix: ''
-  fig-title: 'Figure'
+  eq-prefix: ""
+  fig-prefix: ""
+  fig-title: Figure
   ref-hyperlink: false
-  tbl-prefix: ''
-  tbl-title: 'Table'
+  tbl-prefix: ""
+  tbl-title: Table
 execute:
   echo: false
   error: false
@@ -18,13 +19,12 @@ execute:
 fig-asp: 0.75
 fig-dpi: 600
 fig-width: 6
-fig-align: 'center'
-csl: ".pandoc/journal-of-international-economics.csl"
+fig-align: center
+csl: .pandoc/journal-of-international-economics.csl
 format:
   html:
-    df-print: "default"
+    df-print: default
   docx:
-    df-print: 'default'
-    reference-doc: ".pandoc/templates/academic-reference.docx"
-    bibliography: "reference.bib"
-
+    df-print: default
+    reference-doc: .pandoc/templates/academic-reference-en.docx
+    bibliography: reference.bib

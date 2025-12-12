@@ -25,8 +25,8 @@ use Pod::Usage;
 sub run {
   my ( $class, @args ) = @_;
 
-  my $lang = 'en';
-  my $help = 0;
+  my $lang  = 'en';
+  my $help  = 0;
   my $setup = 0;
 
   # Parse command-line options from provided array
@@ -84,9 +84,9 @@ sub _run_setup {
 
   # Let's try to find the distribution share directory explicitly.
   # We can copy the logic from Manifest but skip the user_share check.
-  
+
   my $source_dir;
-  
+
   # Check development mode first
   my $dir = File::Basename::dirname(__FILE__);
   while ( $dir && $dir ne '/' && $dir !~ m{^[a-z]:[/\\]?$}i ) {
@@ -99,32 +99,32 @@ sub _run_setup {
     last if $parent eq $dir;
     $dir = $parent;
   }
-  
+
   # If not found, check File::ShareDir
   unless ($source_dir) {
-      eval { require File::ShareDir; };
-      unless ($@) {
-          my $dist_dir = eval { File::ShareDir::dist_dir('RInit') };
-          if ($dist_dir && -d $dist_dir) {
-              $source_dir = $dist_dir;
-          }
+    eval { require File::ShareDir; };
+    unless ($@) {
+      my $dist_dir = eval { File::ShareDir::dist_dir('RInit') };
+      if ( $dist_dir && -d $dist_dir ) {
+        $source_dir = $dist_dir;
       }
-  }
-  
-  # Fallback to relative to script
-  if (!$source_dir) {
-      my $script_dir = File::Basename::dirname($0); # This might be bin/
-      if (my $check = File::Spec->catdir($script_dir, '..', 'share')) {
-           $source_dir = $check if -d $check;
-      }
+    }
   }
 
-  unless ($source_dir && -d $source_dir) {
-      die "Could not locate source 'share' directory to copy from.";
+  # Fallback to relative to script
+  if ( !$source_dir ) {
+    my $script_dir = File::Basename::dirname($0);    # This might be bin/
+    if ( my $check = File::Spec->catdir( $script_dir, '..', 'share' ) ) {
+      $source_dir = $check if -d $check;
+    }
+  }
+
+  unless ( $source_dir && -d $source_dir ) {
+    die "Could not locate source 'share' directory to copy from.";
   }
 
   my $xdg_data_home = $ENV{XDG_DATA_HOME} || File::Spec->catdir( $ENV{HOME}, '.local', 'share' );
-  my $target_dir = File::Spec->catdir( $xdg_data_home, 'Rinit' );
+  my $target_dir    = File::Spec->catdir( $xdg_data_home, 'Rinit' );
 
   print "Source: $source_dir\n";
   print "Target: $target_dir\n";
@@ -134,52 +134,57 @@ sub _run_setup {
   # Find all files in source
   use File::Find;
   my $overwrite_all = 0;
-  my $skip_all = 0;
+  my $skip_all      = 0;
 
-  find(sub {
+  find(
+    sub {
       return if -d $_;
-      my $rel = File::Spec->abs2rel($File::Find::name, $source_dir);
-      my $dest = File::Spec->catfile($target_dir, $rel);
+      my $rel      = File::Spec->abs2rel( $File::Find::name, $source_dir );
+      my $dest     = File::Spec->catfile( $target_dir, $rel );
       my $dest_dir = File::Basename::dirname($dest);
-      
+
       make_path($dest_dir) unless -d $dest_dir;
 
-      if (-e $dest) {
-          return if $skip_all;
-          
-          unless ($overwrite_all) {
-              print colored(['yellow'], "Conflict: $rel exists.\n");
-              print "Overwrite? [y]es, [n]o, [a]ll, [N]one (skip set): ";
-              my $ans = <STDIN>;
-              
-              # Handle EOF (e.g. pipe closed) by skipping remaining
-              unless (defined $ans) {
-                  $skip_all = 1;
-                  return;
-              }
-              
-              chomp $ans;
-              
-              if ($ans =~ /^a/i) {
-                  $overwrite_all = 1;
-              } elsif ($ans =~ /^N/i) {
-                  $skip_all = 1;
-                  return;
-              } elsif ($ans =~ /^n/i) {
-                  return;
-              }
-              
-              # Default is no overwrite if they just hit enter (empty string)
-              return if $ans eq '';
+      if ( -e $dest ) {
+        return if $skip_all;
+
+        unless ($overwrite_all) {
+          print colored( ['yellow'], "Conflict: $rel exists.\n" );
+          print "Overwrite? [y]es, [n]o, [a]ll, [N]one (skip set): ";
+          my $ans = <STDIN>;
+
+          # Handle EOF (e.g. pipe closed) by skipping remaining
+          unless ( defined $ans ) {
+            $skip_all = 1;
+            return;
           }
+
+          chomp $ans;
+
+          if ( $ans =~ /^a/i ) {
+            $overwrite_all = 1;
+          }
+          elsif ( $ans =~ /^N/i ) {
+            $skip_all = 1;
+            return;
+          }
+          elsif ( $ans =~ /^n/i ) {
+            return;
+          }
+
+          # Default is no overwrite if they just hit enter (empty string)
+          return if $ans eq '';
+        }
       }
-      
-      copy($File::Find::name, $dest) or warn "Failed to copy $_: $!\n";
+
+      copy( $File::Find::name, $dest ) or warn "Failed to copy $_: $!\n";
       print "Copied $rel\n";
 
-  }, $source_dir);
+    },
+    $source_dir
+  );
 
-  print colored(['green'], "Setup complete!"), "\n";
+  print colored( ['green'], "Setup complete!" ), "\n";
   return;
 }
 
@@ -308,21 +313,23 @@ sub _initialize_version_control {
 
   # Initialize Git if available
   if ( _command_exists('git') ) {
+
     # Initialize git, add files, and create initial commit
     my $git_init_cmd = 'git init -q && git add . && git commit -q -m "Initial commit"';
-    
+
     if ( system($git_init_cmd) == 0 ) {
-       print colored( ['green'], "✅ Git repository initialized" ), "\n";
-       
-       # Add the r-box subtree
-       if ( _prompt_confirm("Do you want to add the r-box subtree (utils)?") ) {
-         my $subtree_cmd = 'git subtree add --prefix=R/box git@github.com:liubianshi/r-box.git master --squash 2>&1';
-         if ( system($subtree_cmd) != 0 ) {
-            print colored( ['yellow'], "⚠️  Failed to add r-box subtree (check network connection)" ), "\n";
-         }
-       } else {
-         print colored( ['blue'], "ℹ️  Skipping r-box subtree" ), "\n";
-       }
+      print colored( ['green'], "✅ Git repository initialized" ), "\n";
+
+      # Add the r-box subtree
+      if ( _prompt_confirm("Do you want to add the r-box subtree (utils)?") ) {
+        my $subtree_cmd = 'git subtree add --prefix=r-box git@github.com:liubianshi/r-box.git master --squash 2>&1';
+        if ( system($subtree_cmd) != 0 ) {
+          print colored( ['yellow'], "⚠️  Failed to add r-box subtree (check network connection)" ), "\n";
+        }
+      }
+      else {
+        print colored( ['blue'], "ℹ️  Skipping r-box subtree" ), "\n";
+      }
     }
     else {
       print colored( ['yellow'], "⚠️  Git initialization failed" ), "\n";
@@ -382,7 +389,6 @@ sub _show_completion_message {
 
   return;
 }
-
 
 #' Prompt user for confirmation (default No)
 #'

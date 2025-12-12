@@ -1,0 +1,15 @@
+# Cache configuration structure
+# Defines caching behavior for data operations
+cache:
+  # Data caching settings
+  data:
+    # Named cache entry configuration
+    name:
+      # Module containing the cache function
+      mod: null
+      # Function name to execute for cache generation
+      func: null
+      # Cache update strategy (e.g., 'on_demand', 'scheduled', 'ttl')
+      update: null
+      # Arguments to pass to the cache function
+      args: null

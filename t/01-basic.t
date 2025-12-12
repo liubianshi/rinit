@@ -49,11 +49,9 @@ chdir($project_name) or die "Cannot chdir to $project_name: $!";
 my $db_name = basename( getcwd() );
 is( $db_name, $project_name, "Verified we are in project dir" );
 
-ok( -f "R/main.R",      "R/main.R created" );
-ok( -f "R/setup_env.R", "R/setup_env.R created" );
-ok( -f ".Rprofile",     ".Rprofile created" );
-ok( -f ".Renviron",     ".Renviron created" );
-ok( -f "taskfile.yml",     "taskfile.yml created" );
+ok( -f "R/main.R",     "R/main.R created" );
+ok( -f ".Rprofile",    ".Rprofile created" );
+ok( -f "taskfile.yml", "taskfile.yml created" );
 
 # Cleanup happens automatically via tempdir CLEANUP => 1,
 # but we should change back to original execution directory first just in case
