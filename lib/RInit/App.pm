@@ -322,7 +322,10 @@ sub _initialize_version_control {
 
       # Add the r-box subtree
       if ( _prompt_confirm("Do you want to add the r-box subtree (utils)?") ) {
-        my $subtree_cmd = 'git subtree add --prefix=r-box git@github.com:liubianshi/r-box.git master --squash 2>&1';
+        my $box_remote  = 'git@github.com:liubianshi/r-box.git';
+        my $box_branch  = "master";
+        my $subtree_cmd = "git remote add box-remote $box_remote && "
+          . "git subtree add --prefix=r-box $box_remote $box_branch --squash 2>&1";
         if ( system($subtree_cmd) != 0 ) {
           print colored( ['yellow'], "⚠️  Failed to add r-box subtree (check network connection)" ), "\n";
         }
