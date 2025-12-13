@@ -2,6 +2,11 @@
 
 A modern R project scaffolding tool written in Perl.
 
+## Subtrees
+
+- 📦 `r-box`: from git@github.com:liubianshi/r-box.git (branch: master)，
+  update mode: `git subtree pull --prefix=r-box box-remote master`
+
 ## Features
 
 - 🚀 Quick project initialization with sensible defaults
@@ -19,7 +24,7 @@ You can install `rinit` easily using `cpanm`. This ensures all dependencies are 
 
 ```bash
 # Install cpanminus if you haven't already
-sudo apt-get install cpanminus  # Debian/Ubuntu
+sudo apt-get install cpanminus # Debian/Ubuntu
 # or
 curl -L https://cpanmin.us | perl - --sudo App::cpanminus
 

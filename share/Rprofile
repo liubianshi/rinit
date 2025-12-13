@@ -26,70 +26,85 @@ CONFIG <- yaml::read_yaml("config.yml")
 PROJECT_NAME <- METADATA$project_name
 Sys.setenv(PROJECT_NAME = PROJECT_NAME)
 
-#' Cache Function Results
-cache_result <- function(type, name, update = NULL) {
+cache_result <- function(task, update = NULL) {
+  # Initialize logger
   box::use(utils/logger[logger_factory])
   logger <- logger_factory("cache")
-  # Retrieve cache metadata from config
-  info <- CONFIG$cache[[type]][[name]]
 
-  # Validate metadata exists
-  if (is.null(info)) {
-    logger$error("元信息缺失")
+  # Parse task path into hierarchical keys
+  keys <- strsplit(task, ":", fixed = TRUE)[[1]]
+
+  # Navigate CONFIG structure to retrieve metadata
+  info <- Reduce(function(meta, key) meta[[key]], keys, init = CONFIG)
+
+  # Validate metadata completeness
+  if (is.null(info) || is.null(info$mod) || is.null(info$func)) {
+    logger$error("Invalid or incomplete metadata for task: {task}")
     return(invisible(NULL))
   }
 
-  if (is.null(update)) {
-    update <- info$update
-  }
+  # Construct cache file path
+  target_path <- local({
+    target_dir <- do.call(file.path, as.list(keys[-length(keys)]))
 
-  if (!dir.exists(glue::glue("cache/{type}"))) {
-    dir.create(glue::glue("cache/{type}"), recursive = TRUE)
-  }
-  target_path <- glue::glue("cache/{type}/{name}.qs")
-  args <- lbs::ifthen(info$args, list())
+    # Ensure cache directory exists
+    if (!dir.exists(target_dir)) {
+      dir.create(target_dir, recursive = TRUE)
+    }
+
+    target_filename <- glue::glue("{keys[length(keys)]}.qs")
+    file.path(target_dir, target_filename)
+  })
 
   # Load caching utility
   box::use(utils/cache[cache_result = result])
 
-  re <- NULL
-  # Execute function and cache results
-  # Note: 'args' should be defined in the calling environment or passed as parameter
+  run <- function(mod, func, args) {
+    # Dynamically load module and function
+    tryCatch(
+      {
+        box_expr <- sprintf("box::use(%s[%s])", mod, func)
+        eval(parse(text = box_expr), envir = parent.frame())
+      },
+      error = function(e) {
+        logger$error("Failed to load module {mod}: {e$message}")
+        return(invisible(NULL))
+      }
+    )
+
+    # Retrieve and execute the loaded function
+    func <- get(func, envir = parent.frame())
+
+    if (!is.function(func)) {
+      logger$error(glue::glue("`{func}` is not a function."))
+      return(invisible(NULL))
+    }
+
+    do.call(func, args)
+  }
+
+  # Execute and cache function results with error handling
+  result <- NULL
   tryCatch(
     {
-      re <- cache_result(
-        {
-          # Dynamically load the specified module and function
-          tryCatch(
-            {
-              parse(text = sprintf("box::use(%s[%s])", info$mod, info$func)) |> eval(envir = parent.frame())
-            },
-            error = function(e) {
-              logger$error(glue::glue("Failed to load module {info$mod}: {e$message}"))
-              return(invisible(NULL))
-            }
-          )
-
-          # Retrieve the function from the loaded module
-          func <- get(info$func, envir = parent.frame())
-
-          do.call(func, args)
-        },
+      result <- cache_result(
+        run(info$mod, info$func, lbs::ifthen(info$args, list())),
         target_path,
-        update
+        lbs::ifthen(update, info$update)
       )
-      logger$info(glue::glue("`cache:{type}:{name}` cached successfully in `{target_path}`"))
+
+      logger$info("Task '{task}' cached successfully at '{target_path}'")
     },
     error = function(e) {
-      logger$error(glue::glue("Caching failed for {type}.{name}: {e$message}"))
+      logger$error("Caching failed for task '{task}': {e$message}")
     }
   )
 
-  invisible(re)
+  result
 }
 
-fetch_cached <- function(type, name) {
-  cache_result(type, name, update = FALSE)
+fetch_cached <- function(task) {
+  cache_result(task, update = FALSE)
 }
 
 # Project startup message
