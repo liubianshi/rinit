@@ -30,7 +30,7 @@ logger_factory <- function(prefix) {
   }
 
   # Pre-format prefix for efficiency
-  prefix_fmt <- paste0(" l033[4m", prefix, "\033[0m")
+  prefix_fmt <- paste0(" \033[4m", prefix, "\033[0m")
 
   # Return list of logging methods
   structure(

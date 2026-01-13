@@ -1,10 +1,26 @@
 # https://taskfile.dev
-
 version: "3"
-vars:
-  GREETING: Hello, World!
+
+# Load environment variables from .env file for configuration context
+dotenv:
+  - .env
+
+includes:
+  lib:
+    taskfile: tasks/r_tasks.yml
+    flatten: true
+    optional: true
+
 tasks:
-  default:
+  build_r_tasks:
+    desc: update tasks/r_tasks.yml
+    sources:
+      - R/utils/Task.R
+    generates:
+      - tasks/r_tasks.yml
+    watch: true
+    method: checksum
     cmds:
-      - echo "{{.GREETING}}"
-    silent: true
+      - Rscript -e 'box::use(R/utils/Task); Task$write_taskfile()'
+
+

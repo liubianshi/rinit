@@ -41,12 +41,39 @@ Returns:
 sub get_dirs {
   my ( $class, $project_name, $variant ) = @_;
 
-  # Return standard R project directory structure
-  return [
-    'raw',         'R/import',       'R/build', 'R/analysis', 'R/check',
-    'R/utils',     'R/lib',          'doc',     'out/data',   'out/tables',
-    'out/figures', 'out/manuscript', 'log',     'cache',      '.pandoc'
-  ];
+  # Standard R project directory structure
+  # Note: $project_name and $variant are reserved for future customization
+  my $config_tree = {
+    R     => { import => 1, build  => 1, analysis => 1, check => 1, utils => 1, lib => 1, },
+    raw   => { data   => 1, doc    => 1 },
+    cache => { data   => 1, doc    => 1 },
+    out   => { data   => 1, tables => 1, figures => 1, manuscript => 1, },
+    doc   => 1,
+    log   => 1,
+    tasks => 1,
+  };
+
+  # Recursive helper to flatten tree structure into list of paths
+  # Uses lexicographic ordering for consistent output
+  my $tree_to_list;
+  $tree_to_list = sub {
+    my ( $tree, $prefix ) = @_;
+    $prefix //= '';
+    my @list;
+
+    for my $key ( sort keys %$tree ) {
+      my $path = $prefix ? "$prefix/$key" : $key;
+      push @list, $path;
+
+      # Recursively process subdirectories
+      if ( defined $tree->{$key} && ref( $tree->{$key} ) eq 'HASH' ) {
+        push @list, $tree_to_list->( $tree->{$key}, $path );
+      }
+    }
+    return @list;
+  };
+
+  return [ $tree_to_list->($config_tree) ];
 }
 
 =head2 get_files

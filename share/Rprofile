@@ -18,6 +18,7 @@ options(
 # Activate renv if available
 if (file.exists("renv/activate.R")) {
   source("renv/activate.R")
+  iii
 }
 
 # ENVIRONMENT VARIABLE
@@ -26,10 +27,9 @@ CONFIG <- yaml::read_yaml("config.yml")
 PROJECT_NAME <- METADATA$project_name
 Sys.setenv(PROJECT_NAME = PROJECT_NAME)
 LOG <- local({
-  box::use(R/utils/logger)
-  logger$logger_factory(PROJECT_NAME)
+  box::use(R/utils/Logger)
+  Logger$logger_factory(PROJECT_NAME)
 })
-box::use(R/utils/cache_result[...])
 
 # Project startup message
 packageStartupMessage(
