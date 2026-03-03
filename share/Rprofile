@@ -18,18 +18,24 @@ options(
 # Activate renv if available
 if (file.exists("renv/activate.R")) {
   source("renv/activate.R")
-  iii
 }
 
 # ENVIRONMENT VARIABLE
-METADATA <- yaml::read_yaml("_metadata.yml")
-CONFIG <- yaml::read_yaml("config.yml")
-PROJECT_NAME <- METADATA$project_name
-Sys.setenv(PROJECT_NAME = PROJECT_NAME)
-LOG <- local({
-  box::use(R/utils/Logger)
-  Logger$logger_factory(PROJECT_NAME)
-})
+if (file.exists("_metadata.yml")) {
+  METADATA <- yaml::read_yaml("_metadata.yml")
+  PROJECT_NAME <- METADATA$project_name
+  Sys.setenv(PROJECT_NAME = PROJECT_NAME)
+} else {
+  PROJECT_NAME <- basename(getwd())
+}
+
+LOG <- tryCatch(
+  local({
+    box::use(R/utils/Logger)
+    Logger$logger_factory(PROJECT_NAME)
+  }),
+  error = function(e) NULL
+)
 
 # Project startup message
 packageStartupMessage(

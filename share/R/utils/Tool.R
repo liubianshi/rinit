@@ -1,4 +1,5 @@
 box::use(R/utils/Logger[logger_factory])
+box::use(glue[glue])
 LOG <- logger_factory("Tools")
 
 #' Conditional Value Selection with Multiple Fallbacks
@@ -51,34 +52,43 @@ ifthen <- function(...) {
 #' @param func A character string specifying the function name to retrieve from the module.
 #' @param args A list of arguments to pass to the function.
 #'
-#' @return The result of the executed function, or `NULL` if an error occurs.
+#' @return The result of the executed function. Throws an error if the module
+#'   cannot be loaded, if `func` is not found, or if execution fails.
 #' @export
 execute_box_mod_func <- function(mod, func, args) {
   stopifnot(is.character(mod), is.character(func), is.list(args))
 
-  loaded <- tryCatch(
-    {
-      box_expr <- sprintf("box::use(%s[%s])", mod, func)
-      eval(parse(text = box_expr), envir = environment())
-    },
+  # Validate mod and func to prevent injection via eval(parse(...))
+  if (!grepl("^[A-Za-z0-9/_.-]+$", mod)) {
+    LOG$error(glue("Invalid module path: '{mod}'"))
+  }
+  if (!grepl("^[A-Za-z][A-Za-z0-9_.]*$", func)) {
+    LOG$error(glue("Invalid function name: '{func}'"))
+  }
+
+  # Dynamically load the module via box
+  box_expr <- sprintf("box::use(%s[%s])", mod, func)
+  tryCatch(
+    eval(parse(text = box_expr), envir = environment()),
     error = function(e) {
-      LOG$error(glue::glue("Failed to load module '{mod}': {e$message}"))
+      LOG$error(glue("Failed to load module '{mod}': {e$message}"))
     }
   )
 
-  # Retrieve the function object from the current environment
-  func_obj <- get(func, envir = environment())
-
-  # Validate that the retrieved object is indeed a function
+  # Retrieve and validate the function object
+  if (!exists(func, envir = environment(), inherits = TRUE)) {
+    LOG$error(glue("'{func}' not found in module '{mod}' after loading."))
+  }
+  func_obj <- get(func, envir = environment(), inherits = TRUE)
   if (!is.function(func_obj)) {
-    LOG$error(glue::glue("'{func}' from module '{mod}' is not a function."))
+    LOG$error(glue("'{func}' from module '{mod}' is not a function."))
   }
 
   # Execute the function with provided arguments
   tryCatch(
     do.call(func_obj, args),
     error = function(e) {
-      LOG$error(glue::glue("Error executing '{func}': {e$message}"))
+      LOG$error(glue("Error executing '{func}': {e$message}"))
     }
   )
 }

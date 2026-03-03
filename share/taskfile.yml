@@ -16,11 +16,11 @@ tasks:
     desc: update tasks/r_tasks.yml
     sources:
       - R/utils/Task.R
+      - config.yml
+      - config.R
     generates:
       - tasks/r_tasks.yml
     watch: true
     method: checksum
     cmds:
       - Rscript -e 'box::use(R/utils/Task); Task$write_taskfile()'
-
-

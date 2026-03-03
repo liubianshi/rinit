@@ -183,20 +183,10 @@ assert_metadata <- function(meta) {
     LOG$error(glue("Invalid task name format: '{meta$name}'. Expected 'group:subgroup:task'"))
   }
 
-  real_mod_path <- tryCatch(
+  tryCatch(
     find_module_path(meta$mod),
-    error = function(e) stop(glue("Task '{meta$name}': {e$message}"))
+    error = function(e) LOG$error(glue("Task '{meta$name}': {e$message}"))
   )
-
-  # Verify module file accessibility
-  # Check current directory and box.path options
-  mod_file <- paste0(meta$mod, ".R")
-  search_paths <- c(".", getOption("box.path", default = character(0)))
-  full_paths <- file.path(search_paths, mod_file)
-
-  if (!any(file.exists(file.path(search_paths, mod_file)))) {
-    LOG$error(glue("Task '{meta$name}': Module '{mod_file}' not found in search paths."))
-  }
 
   # 3. Validate 'func' (Function Name)
   if (is.null(meta$func) || !nzchar(meta$func)) {
@@ -229,15 +219,14 @@ assert_metadata <- function(meta) {
 #'   configuration defaults. When provided, values override config defaults.
 #'
 #' @return A list containing the complete task metadata with all required
-#'   fields populated. Returns `invisible(NULL)` if validation fails.
+#'   fields populated. Throws an error if validation fails.
 #'
 #' @details
 #' The function performs the following operations:
 #' \itemize{
 #'   \item Validates that at least one of `name` or `meta` is provided
 #'   \item Resolves the task name from either parameter
-#'   \item Loads configuration from "config.yml"
-#'   \item Navigates nested config structure using colon-separated keys
+#'   \item Looks up the task in the pre-loaded TASKS registry (from `config.R` or `config.yml`)
 #'   \item Merges config defaults with user-provided metadata
 #'   \item Generates cache path if not specified
 #'   \item Validates final metadata completeness
@@ -246,11 +235,11 @@ assert_metadata <- function(meta) {
 #' @examples
 #' \dontrun{
 #' # Fetch metadata using task name only
-#' meta <- fetch_task_meta_with(task = "data:processing:clean")
+#' meta <- fetch_task_meta_with(name = "data:processing:clean")
 #'
 #' # Override specific metadata fields
 #' meta <- fetch_task_meta_with(
-#'   task = "analysis:model",
+#'   name = "analysis:model",
 #'   meta = list(version = "2.0", args = list(method = "lm"))
 #' )
 #' }
@@ -268,7 +257,7 @@ fetch_task_meta_with <- function(name = NULL, meta = NULL) {
   }
 
   # 2. 合并传入的 meta (覆盖配置)
-  final_meta <- modifyList(base_meta, meta %||% list())
+  final_meta <- modifyList(base_meta, if (is.null(meta)) list() else meta)
 
   # 确保有名字 (如果只传了 meta 没传 name)
   if (is.null(final_meta$name) && !is.null(name)) {
@@ -295,15 +284,15 @@ fetch_task_meta_with <- function(name = NULL, meta = NULL) {
 #' Supports hierarchical task definitions and automatic cache invalidation.
 #'
 #' @param name Character string specifying the task path (colon-separated hierarchy).
-#' @param update Logical or expression to determine cache update behavior. Default is NULL.
+#' @param meta Optional list of metadata fields to override config defaults.
 #'
-#' @return The cached result of the task execution, or NULL if an error occurs.
+#' @return The cached result of the task execution invisibly. Throws an error if the task fails.
 #' @export
 #'
 #' @examples
 #' \dontrun{
-#' cache_result("data:processing:clean")
-#' cache_result("model:train", update = TRUE)
+#' run_task("data:processing:clean")
+#' run_task("model:train", meta = list(update = TRUE))
 #' }
 run_task <- function(name = NULL, meta = NULL) {
   # 获取并校验元数据 (如果有错误会直接在此处停止)
@@ -339,10 +328,8 @@ run_task <- function(name = NULL, meta = NULL) {
 #' "tasks" directory. It automatically handles directory creation, prepends a
 #' timestamped warning header, and utilizes `gen_task_content` for formatting.
 #'
-#' @param tasks A list containing task objects. If `category` is `NULL`, this
-#'   must be a named list, where the names serve as categories for recursive calls.
-#' @param category A character string indicating the filename (without extension).
-#'   If `NULL`, the function iterates over `tasks` using its names.
+#' @param taskfile_name A character string for the output filename (without directory).
+#'   Defaults to `"r_tasks.yml"`. The file is written to the `tasks/` directory.
 #'
 #' @return Returns `NULL` invisibly. The function is called for its side effect
 #'   of writing files to disk.
