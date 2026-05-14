@@ -1,0 +1,2762 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+bin/
+  rinit
+lib/
+  RInit/
+    App.pm
+    Manifest.pm
+    Templates.pm
+share/
+  .claude/
+    settings.local.json
+  metadata/
+    metadata_en.yml
+    metadata_zh.yml
+  pandoc/
+    templates/
+      academic-reference_en.docx
+      academic-reference-zh.docx
+    china-national-standard-gb-t-7714-2015-author-date.csl
+    journal-of-international-economics.csl
+  R/
+    utils/
+      Cache.R
+      Logger.R
+      Task.R
+      Tool.R
+    main.R
+  AGENT.md
+  air.toml
+  config.yml
+  gitignore
+  README_CN.md
+  README.md
+  Rprofile
+  taskfile.yml
+t/
+  00-compile.t
+  01-basic.t
+.gitignore
+Makefile.PL
+README.md
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="share/.claude/settings.local.json">
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:taskfile.dev)"
+    ]
+  }
+}
+</file>
+
+<file path="bin/rinit">
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use RInit::App;
+
+RInit::App->run(@ARGV);
+</file>
+
+<file path="lib/RInit/Templates.pm">
+package RInit::Templates;
+
+use strict;
+use warnings;
+sub get_project_files {
+  my ( $class, $project_name, $lang ) = @_;
+
+  require RInit::Manifest;
+  my $files = RInit::Manifest->get_files( $project_name, $lang );
+  my @operations;
+
+  for my $file (@$files) {
+    die "Source file path missing for target '$file->{target}'" unless $file->{source};
+
+    # If processing is needed, read content
+    if ( $file->{process} ) {
+      open my $fh, '<', $file->{source} or die "Cannot read source '$file->{source}': $!";
+      local $/;
+      my $content = <$fh>;
+      close $fh;
+
+      $content = $file->{process}->($content);
+
+      push @operations, { target => $file->{target}, content => $content };
+    }
+    else {
+      # No processing needed, use direct copy
+      push @operations, { target => $file->{target}, source => $file->{source} };
+    }
+  }
+
+  return \@operations;
+}
+
+1;
+</file>
+
+<file path="share/pandoc/china-national-standard-gb-t-7714-2015-author-date.csl">
+<?xml version="1.0" encoding="utf-8"?>
+<style xmlns="http://purl.org/net/xbiblio/csl" version="1.0" class="in-text" delimiter-precedes-last="always" demote-non-dropping-particle="never" name-delimiter=", " initialize-with=" " names-delimiter=". " name-as-sort-order="all" sort-separator=" " default-locale="zh-CN">
+    <info>
+        <title>
+            China National Standard GB/T 7714-2015 (author-date, 中文)
+        </title>
+        <title-short>
+            GB/T 7714-2015 (author-date)
+        </title-short>
+        <id>
+            http://www.zotero.org/styles/china-national-standard-gb-t-7714-2015-author-date
+        </id>
+        <link href="http://www.zotero.org/styles/china-national-standard-gb-t-7714-2015-author-date" rel="self"/>
+        <link href="http://www.zotero.org/styles/china-national-standard-gb-t-7714-2015-numeric" rel="template"/>
+        <link href="http://www.std.gov.cn/gb/search/gbDetailed?id=71F772D8055ED3A7E05397BE0A0AB82A" rel="documentation"/>
+        <author>
+            <name>
+                牛耕田
+            </name>
+            <email>
+                buffalo_d@163.com
+            </email>
+        </author>
+        <category citation-format="author-date"/>
+        <category field="generic-base"/>
+        <summary>
+            The Chinese GB/T7714-2015 author-date style
+        </summary>
+        <updated>
+            2021-02-15T03:41:57+00:00
+        </updated>
+        <rights license="http://creativecommons.org/licenses/by-sa/3.0/">
+            This work is licensed under a Creative Commons Attribution-ShareAlike 3.0 License
+        </rights>
+    </info>
+    <locale xml:lang="zh-CN">
+        <terms>
+            <term name="anonymous">
+                佚名
+            </term>
+            <term name="edition">
+                版
+            </term>
+            <term name="page" form="short">
+                <single>
+                    p.
+                </single>
+                <multiple>
+                    pp.
+                </multiple>
+            </term>
+        </terms>
+    </locale>
+
+    <macro name="accessed-date">
+        <date variable="accessed" delimiter="&#8211;" prefix="[" suffix="]">
+            <date-part name="year"/>
+            <date-part name="month" form="numeric-leading-zeros"/>
+            <date-part name="day" form="numeric-leading-zeros"/>
+        </date>
+    </macro>
+    <macro name="author">
+        <choose>
+            <if variable="author">
+                <names variable="author">
+                    <name>
+                        <name-part name="family" text-case="capitalize-first"/>
+                        <name-part name="given"/>
+                    </name>
+                </names>
+            </if>
+            <else>
+                <text term="anonymous"/>
+            </else>
+        </choose>
+    </macro>
+    <macro name="author-intext">
+        <choose>
+            <if variable="author">
+                <names variable="author">
+                    <name and="symbol" form="short" delimiter-precedes-last="never"  et-al-min="3">
+                        <name-part name="family" text-case="capitalize-first"/>
+                    </name>
+                </names>
+            </if>
+            <else>
+                <text term="anonymous"/>
+            </else>
+        </choose>
+    </macro>
+    <macro name="container-author">
+        <names variable="container-author">
+            <name>
+                <name-part name="family" text-case="capitalize-first"/>
+                <name-part name="given"/>
+            </name>
+        </names>
+    </macro>
+    <macro name="edition">
+        <choose>
+            <if variable="edition">
+                <group delimiter=" ">
+                    <text variable="edition"/>
+                    <text term="edition"/>
+                </group>
+            </if>
+        </choose>
+    </macro>
+    <macro name="editor">
+        <names variable="editor translator">
+            <name>
+                <name-part name="family" text-case="capitalize-first"/>
+                <name-part name="given"/>
+            </name>
+            <label form="short" prefix=", "/>
+        </names>
+    </macro>
+    <macro name="issued-date">
+        <choose>
+            <if variable="issued">
+                <date variable="issued" delimiter="&#8211;">
+                    <date-part name="year"/>
+                    <date-part name="month" form="numeric-leading-zeros"/>
+                    <date-part name="day" form="numeric-leading-zeros"/>
+                </date>
+            </if>
+            <else>
+                <text term="no date" prefix="[" suffix="]"/>
+            </else>
+        </choose>
+    </macro>
+    <macro name="issue-date-year">
+        <choose>
+            <if variable="issued">
+                <date variable="issued" date-parts="year" form="numeric"/>
+            </if>
+            <else>
+                <text term="no date" prefix="[" suffix="]"/>
+            </else>
+        </choose>
+    </macro>
+    <macro name="publishing">
+        <choose>
+            <if variable="publisher">
+                <group delimiter=": ">
+                    <text variable="publisher-place"/>
+                    <group delimiter=", ">
+                        <text variable="publisher"/>
+                    </group>
+                </group>
+                <text variable="page" prefix=": "/>
+            </if>
+        </choose>
+    </macro>
+    <macro name="serial-information">
+        <group delimiter=", ">
+            <text variable="volume"/>
+        </group>
+        <text variable="issue" prefix="(" suffix=")"/>
+        <text variable="page" prefix=": "/>
+    </macro>
+    <macro name="type-code">
+        <choose>
+            <if type="article-journal article-magazine" match="any">
+                <text value="J"/>
+            </if>
+            <else-if type="article-newspaper">
+                <text value="N"/>
+            </else-if>
+            <else-if type="bill legislation" match="any">
+                <text value="S"/>
+            </else-if>
+            <else-if type="book">
+                <text value="M"/>
+            </else-if>
+            <else-if type="chapter">
+                <text value="M"/>
+            </else-if>
+            <else-if type="dataset">
+                <text value="DS"/>
+            </else-if>
+            <else-if type="paper-conference">
+                <text value="C"/>
+            </else-if>
+            <else-if type="patent">
+                <text value="P"/>
+            </else-if>
+            <else-if type="post-weblog webpage" match="any">
+                <text value="EB"/>
+            </else-if>
+            <else-if type="report">
+                <text value="R"/>
+            </else-if>
+            <else-if type="thesis">
+                <text value="D"/>
+            </else-if>
+            <else>
+                <text value="Z"/>
+            </else>
+        </choose>
+    </macro>
+    <macro name="title">
+        <text variable="title" text-case="title"/>
+        <text variable="number" prefix=": "/>
+        <group delimiter="/" prefix="[" suffix="]">
+            <text macro="type-code"/>
+            <choose>
+                <if variable="URL">
+                    <text value="OL"/>
+                </if>
+            </choose>
+        </group>
+    </macro>
+    <citation et-al-min="3" et-al-use-first="1" disambiguate-add-year-suffix="true" disambiguate-add-names="true" disambiguate-add-givenname="true" collapse="year">
+        <sort>
+            <key macro="author-intext"/>
+            <key macro="issue-date-year" sort="ascending"/>
+        </sort>
+        <layout prefix="(" suffix=")" delimiter="; ">
+            <group delimiter=", ">
+                <text macro="author-intext"/>
+                <text macro="issue-date-year"/>
+                <group>
+                    <label variable="locator" form="short"/>
+                    <text variable="locator"/>
+                </group>
+            </group>
+        </layout>
+    </citation>
+    <bibliography entry-spacing="0" et-al-min="4" et-al-use-first="3" line-spacing="1" hanging-indent="true">
+        <sort>
+            <key macro="author-intext"/>
+            <key macro="issue-date-year" sort="ascending"/>
+        </sort>
+        <layout suffix=".">
+            <text macro="author" suffix=". "/>
+            <text macro="issue-date-year" suffix=". "/>
+            <text macro="title"/>
+            <choose>
+                <if type="book bill chapter legislation paper-conference report thesis" match="any">
+                    <text macro="editor" prefix=". "/>
+                    <choose>
+                        <if variable="container-title">
+                            <text value="//"/>
+                            <text macro="container-author" suffix=". "/>
+                            <text variable="container-title" suffix=". " text-case="title"/>
+                        </if>
+                        <else>
+                            <text value=". "/>
+                        </else>
+                    </choose>
+                    <text macro="edition" suffix=". "/>
+                    <text macro="publishing"/>
+                </if>
+                <else-if type="article-journal article-magazine article-newspaper" match="any">
+                    <group prefix=". ">
+                        <choose>
+                            <if variable="container-title">
+                                <text variable="container-title" text-case="title"/>
+                                <text macro="serial-information" prefix=", "/>
+                            </if>
+                            <else>
+                                <text macro="serial-information" suffix=". "/>
+                                <text macro="publishing"/>
+                            </else>
+                        </choose>
+                    </group>
+                </else-if>
+                <else-if type="patent">
+                    <text macro="issued-date" prefix=". "/>
+                </else-if>
+                <else>
+                    <text macro="publishing" prefix=". "/>
+                    <text macro="issued-date" prefix="(" suffix=")"/>
+                </else>
+            </choose>
+            <text macro="accessed-date"/>
+            <group delimiter=". " prefix=". ">
+                <!-- <text variable="URL"/> -->
+                <!-- <text variable="DOI" prefix="DOI:"/> -->
+            </group>
+        </layout>
+    </bibliography>
+</style>
+</file>
+
+<file path="share/pandoc/journal-of-international-economics.csl">
+<?xml version="1.0" encoding="utf-8"?>
+<style xmlns="http://purl.org/net/xbiblio/csl" version="1.0" default-locale="en-US">
+  <!-- Elsevier, generated from "elsevier" metadata at https://github.com/citation-style-language/journals -->
+  <info>
+    <title>Journal of International Economics</title>
+    <id>http://www.zotero.org/styles/journal-of-international-economics</id>
+    <link href="http://www.zotero.org/styles/journal-of-international-economics" rel="self"/>
+    <link href="http://www.zotero.org/styles/elsevier-harvard" rel="independent-parent"/>
+    <category citation-format="author-date"/>
+    <issn>0022-1996</issn>
+    <updated>2018-02-16T12:00:00+00:00</updated>
+    <rights license="http://creativecommons.org/licenses/by-sa/3.0/">This work is licensed under a Creative Commons Attribution-ShareAlike 3.0 License</rights>
+  </info>
+</style>
+</file>
+
+<file path="share/R/utils/Cache.R">
+#' Cache Evaluation Result
+#'
+#' Evaluates R expressions and caches the result to a file. Automatically
+#' handles directory creation and supports both QS and RDS formats.
+#'
+#' @param expressions An R expression or block of expressions to evaluate.
+#'   Variables created within a block `{...}` will be local to the evaluation
+#'   environment and not leak into the caller, unless `<<-` is used.
+#' @param file Character. The cache filename. If no directory component is
+#'   provided, the file is saved in a 'cache' subdirectory (created if needed).
+#'   Must end in `.qs` or `.rds`.
+#' @param update Logical. If `TRUE`, forces re-evaluation and updates the cache.
+#'
+#' @return The result of the evaluated expressions.
+#' @export
+result <- function(expressions, file, update = FALSE) {
+  # Validate file extension
+  ext <- tolower(tools::file_ext(file))
+  if (!ext %in% c("qs", "rds")) {
+    stop("Invalid file extension. Please use '.qs' or '.rds'.")
+  }
+
+  # Return cached result if available
+  if (file.exists(file) && !isTRUE(update)) {
+    if (ext == "qs") {
+      if (!requireNamespace("qs", quietly = TRUE)) {
+        stop("Package 'qs' is not installed.")
+      }
+      return(qs::qread(file))
+    } else {
+      return(readRDS(file))
+    }
+  }
+
+  # Evaluate expressions in a clean environment inheriting from caller
+  # This prevents temporary variables inside 'expressions' from leaking
+  env <- new.env(parent = parent.frame())
+  res <- eval(substitute(expressions), envir = env)
+
+  # Write to cache
+  tryCatch(
+    {
+      if (ext == "qs") {
+        qs::qsave(res, file)
+      } else {
+        saveRDS(res, file)
+      }
+    },
+    error = function(e) {
+      warning("Failed to write cache file '", file, "': ", e$message)
+    }
+  )
+
+  return(res)
+}
+</file>
+
+<file path="share/R/main.R">
+# Main execution script
+# Calls each analysis step in sequence
+
+# 1. Data cleaning
+# source("R/build/01_clean_data.R")
+
+# 2. Core analysis
+# source("R/analysis/01_regressions.R")
+
+# 3. Generate figures and tables
+# source("R/analysis/02_figures.R")
+
+# Example: Use functions from R/functions.R
+# box::use(R/functions)
+# functions$hello("World")
+</file>
+
+<file path="share/AGENT.md">
+# Project Context & AI Instructions
+
+## 1. Project Overview
+This is an economic research project analyzing Tariff-Induced Global Value Chain Extension. 
+The goal is to produce reproducible estimates using Panel Regression with Upstream/Downstream Tariff Exposure.
+
+## 2. Tech Stack & Coding Style (MANDATORY)
+* **Language:** R
+* **Data Manipulation:** * `data.table` ONLY. No `dplyr`.
+    * Use pipe syntax: `dt[i, j] %>% .[order(-date)]`
+* **Package Management:** * Strictly use `box::use()`. 
+    * Example: `box::use(data.table[...], fixest[feols])`
+* **Documentation:** Quarto (`.qmd`) with LaTeX math.
+
+## 3. Directory Structure
+* `data/raw`: Immutable raw CSVs. Never edit manually.
+* `data/processed`: Cleaning scripts output here (via `fwrite`).
+* `doc/`: Manuscript source files (e.g., `_empirical_method.qmd`, `draft.qmd`).
+* `R/`: Reusable logic/functions (modules).
+* `analysis/`: Analysis scripts (e.g., `01_clean.qmd`, `02_reg.qmd`).
+
+## 4. Tone & Language
+* **Language:** Chinese (Simplified).
+* **Tone:** Professional, academic, and technically precise.
+* **Formatting:**
+    * Minimize use of bold (`**`) or quotes for emphasis unless necessary.
+    * Avoid using dashes (`-`, `—`) unless necessary.
+    * For Chinese quotes, strictly use `「` and `」` instead of `“` and `”`.
+
+## 5. Analytical Guidelines
+* **Robustness:** Always include standard errors clustered at the Product (HS6) level.
+* **Tables:** Use `modelsummary` for regression output.
+* **Visualization:** Use `ggplot2` but import via `box::use(ggplot2[...])`.
+
+## 6. Common Tasks
+* If asked to **"Load Data"**: Look for the latest file in `data/processed` and use `fread`.
+* If asked to **"Check Logs"**: Summary stats should focus on missing values and outliers in key economic variables.
+</file>
+
+<file path="share/config.yml">
+# Cache configuration structure
+# Defines caching behavior for data operations
+cache:
+  # Data caching settings
+  data:
+    # Named cache entry configuration
+    name:
+      # Module containing the cache function
+      mod: null
+      # Function name to execute for cache generation
+      func: null
+      # Cache update strategy (e.g., 'on_demand', 'scheduled', 'ttl')
+      update: null
+      # Arguments to pass to the cache function
+      args: null
+</file>
+
+<file path="share/gitignore">
+# Golden rule: ignore all generated outputs
+/out/
+/gen/
+/log/
+/cache/
+
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+
+# R language specific
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.Renviron
+library/
+renv/library/
+renv/python/
+renv/staging/
+
+# LaTeX auxiliary files
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# DVC (Data Version Control)
+/data/
+.dvc/cache
+/data/*.dvc
+
+# Sensitive information
+*.key
+*.token
+</file>
+
+<file path="share/README_CN.md">
+# __PROJECT_NAME__
+
+## 项目简介
+
+在此描述你的研究目标。
+
+## 复现指南
+
+本项目遵循可复现研究工作流。
+
+1. **打开项目**：在编辑器中打开项目目录（VS Code、RStudio 等）。
+2. **恢复环境**：运行 `renv::restore()` 安装依赖包（如使用 renv）。
+3. **准备数据**：
+   - 如使用 DVC：运行 `dvc pull`
+   - 否则，确保原始数据已放置在 `/data` 目录下。
+4. **运行分析**：
+   - 直接执行主脚本：
+     `source("R/main.R")`
+   - 或使用任务系统：
+     `task < 任务名 >` （详见下方 [任务系统](#任务系统)）
+
+## 目录结构
+
+- `/R/`：R 源代码（build、analysis、check、utils）
+- `/data/`：原始数据（只读，请勿手动修改）
+- `/out/`：生成的输出文件（已加入.gitignore）
+- `/cache/`：缓存数据（已加入.gitignore）
+- `/doc/`：文档与手稿
+- `/log/`：执行日志
+- `/template/`：文档模板（CSL、DOCX）
+- `/tasks/`：go-task 任务定义（自动生成，请勿手动编辑）
+
+## 任务系统
+
+本项目使用 [go-task](https://taskfile.dev) 进行任务自动化。
+任务在 `config.yml` 或 `config.R` 中定义，并自动编译为 `tasks/r_tasks.yml`。
+
+### 安装
+
+```bash
+# macOS / Linux（通过官方安装脚本）
+sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+
+# Arch Linux
+pacman -S go-task
+
+# macOS（Homebrew）
+brew install go-task
+```
+
+### 工作原理
+
+任务在 `config.yml`（或 `config.R`）中以层级结构定义，
+包含 `mod` 和 `func` 字段的叶节点即为一个可执行任务：
+
+```yaml
+# config.yml
+cache:
+  data:
+    my_dataset: # → 任务名：cache:data:my_dataset
+      mod: R/build/Data # box 模块路径（对应 R/build/Data.R）
+      func: load_data # 模块中导出的函数名
+      update: null # 缓存策略（null = 缓存存在时跳过执行）
+      args: null # 传递给函数的参数
+```
+
+任务名按配置树的层级以冒号拼接（如 `cache:data:my_dataset`）。
+
+### 定义新任务
+
+任务可在 `config.yml`（静态）或 `config.R`（动态）中定义，两者**不会合并**，
+同时存在时 `config.R` 优先（需返回非 `NULL` 值）。
+
+**方式 A：`config.yml`** — 适合简单、静态的任务定义：
+
+```yaml
+cache:
+  analysis:
+    regression:
+      mod: R/analysis/Model # box 模块路径（R/analysis/Model.R）
+      func: run_regression # 要调用的导出函数
+      update: null # 缓存策略（null = 缓存存在时跳过）
+      args:
+        method: lm
+        controls: [age, income]
+```
+
+**方式 B：`config.R`** — 适合动态任务定义（如批量循环生成任务）。
+文件的**最后一个表达式**作为返回值：
+
+```r
+# config.R
+datasets <- c("survey", "panel", "census")
+
+cache_tasks <- setNames(
+  lapply(datasets, function(d) {
+    list(
+      mod = paste0("R/build/", d),
+      func = "load_data",
+      update = NULL,
+      args = list(year = 2023)
+    )
+  }),
+  datasets
+)
+
+# 最后一个表达式即为返回值
+list(
+  cache = list(
+    data = cache_tasks
+  )
+)
+```
+
+以上配置会生成任务 `cache:data:survey`、`cache:data:panel`、`cache:data:census`。
+
+定义任务后，需重新生成任务文件：
+
+```bash
+task build_r_tasks
+```
+
+该命令执行 `Rscript -e 'box::use(R/utils/Task); Task$write_taskfile()'`，
+更新 `tasks/r_tasks.yml`。
+
+### 执行任务
+
+```bash
+# 列出所有可用任务
+task --list
+
+# 执行指定任务（冒号分隔层级）
+task cache:data:my_dataset
+
+# 执行所有任务（默认）
+task
+
+# 强制重新执行任务（忽略缓存）
+task --force cache:analysis:regression
+
+# 监视文件变化并自动重建
+task --watch build_r_tasks
+```
+
+### 任务缓存
+
+任务通过 `cache_result()` 函数实现基于文件的缓存，输出以 `.qs` 格式存储在 `cache/` 目录下，
+路径与任务名层级对应：
+
+- `cache:data:my_dataset` → `cache/data/my_dataset/default.qs`
+
+go-task 会追踪 `sources`（输入的 R 模块文件）和 `generates`（输出的缓存文件）。
+若源文件自上次运行后未发生变化，任务将被跳过。
+
+### 内置任务
+
+| 任务 | 说明 |
+|------|------|
+| `build_r_tasks` | 从 `config.yml` / `config.R` 重新生成 `tasks/r_tasks.yml` |
+</file>
+
+<file path="t/00-compile.t">
+use strict;
+use warnings;
+use Test::More;
+
+my @modules = qw(
+    RInit::App
+    RInit::Templates
+    RInit::Manifest
+
+);
+
+plan tests => scalar @modules;
+
+for my $module (@modules) {
+    require_ok($module) || BAIL_OUT("Failed to load $module");
+}
+</file>
+
+<file path=".gitignore">
+# 排除构建产物 (Build Artifacts)
+blib/
+_build/
+Build
+_Build/
+MYMETA.json
+MYMETA.yml
+Makefile
+Makefile.old
+pm_to_blib
+*.o
+*.bs
+*.so
+
+# 排除日志文件 (Log Files)
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+
+# 排除敏感信息 (Sensitive Information)
+.env
+.env.local
+.env.*.local
+
+# 排除 IDE/编辑器配置 (IDE/Editor)
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# 排除操作系统生成文件 (OS Generated)
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+</file>
+
+<file path="share/metadata/metadata_en.yml">
+---
+project_name: __PROJECT_NAME__
+lang: en
+crossref:
+  eq-prefix: ""
+  fig-prefix: ""
+  fig-title: Figure
+  ref-hyperlink: false
+  tbl-prefix: ""
+  tbl-title: Table
+execute:
+  echo: false
+  error: false
+  eval: true
+  include: true
+  output: asis
+  warning: false
+  keep-md: true
+fig-asp: 0.75
+fig-dpi: 600
+fig-width: 6
+fig-align: center
+csl: .pandoc/journal-of-international-economics.csl
+format:
+  html:
+    df-print: default
+  docx:
+    df-print: default
+    reference-doc: .pandoc/templates/academic-reference-en.docx
+    bibliography: reference.bib
+</file>
+
+<file path="share/metadata/metadata_zh.yml">
+---
+project_name: __PROJECT_NAME__
+lang: zh
+crossref:
+  eq-prefix: ""
+  fig-prefix: ""
+  fig-title: 图
+  ref-hyperlink: false
+  tbl-prefix: ""
+  tbl-title: 表
+execute:
+  echo: false
+  error: false
+  eval: true
+  include: true
+  output: asis
+  warning: false
+  keep-md: true
+fig-asp: 0.75
+fig-dpi: 600
+fig-width: 6
+fig-align: center
+csl: .pandoc/china-national-standard-gb-t-7714-2015-author-date.csl
+format:
+  html:
+    df-print: default
+  docx:
+    df-print: default
+    reference-doc: .pandoc/templates/academic-reference-zh.docx
+    bibliography: reference.bib
+</file>
+
+<file path="share/R/utils/Logger.R">
+#' Create a Logger Factory
+#'
+#' This function creates a logger object with methods for different log levels.
+#' Each log message is prefixed with a custom identifier.
+#'
+#' @param prefix A character string to prepend to all log messages.
+#'
+#' @return A list containing four logging functions:
+#'   \itemize{
+#'     \item \code{info}: Logs informational messages
+#'     \item \code{warn}: Logs warning messages
+#'     \item \code{error}: Logs error messages and stops execution
+#'     \item \code{debug}: Logs debug messages (only if logger.debug option is TRUE)
+#'   }
+#'
+#' @examples
+#' logger <- logger_factory("MyApp")
+#' logger$info("Application started")
+#' logger$warn("Low memory")
+#'
+#' # Enable debug logging
+#' options(logger.debug = TRUE)
+#' logger$debug("Variable x = 5")
+#'
+#' @export
+logger_factory <- function(prefix) {
+  # Validate input
+  if (!is.character(prefix) || length(prefix) != 1L) {
+    stop("prefix must be a single character string", call. = FALSE)
+  }
+
+  # Only apply ANSI color codes when outputting to an interactive terminal
+  use_color <- isatty(stderr())
+
+  colorize <- function(text, code) {
+    if (use_color) paste0("\033[", code, "m", text, "\033[0m") else text
+  }
+
+  fmt_prefix <- paste0(" ", if (use_color) paste0("\033[4m", prefix, "\033[0m") else prefix)
+
+  fmt_msg <- function(level, color_code, msg) {
+    paste0(colorize(level, color_code), fmt_prefix, ": ", msg)
+  }
+
+  # Return list of logging methods
+  structure(
+    list(
+      info = function(msg) message(fmt_msg("[INFO]", 34, msg)),
+      warn = function(msg) message(fmt_msg("[WARN]", 33, msg)),
+      error = function(msg) stop("\n", fmt_msg("[ERROR]", 31, msg), call. = FALSE),
+      debug = function(msg) {
+        if (isTRUE(getOption("logger.debug", FALSE))) {
+          message(fmt_msg("[DEBUG]", 90, msg))
+        }
+      }
+    ),
+    class = "logger"
+  )
+}
+</file>
+
+<file path="share/R/utils/Task.R">
+# box 模块
+box::use(R/utils/Logger[logger_factory])
+box::use(R/utils/Cache[cache_result = result])
+box::use(R/utils/Tool[ifthen, execute_box_mod_func])
+box::use(utils[modifyList])
+box::use(yaml[read_yaml, write_yaml])
+box::use(tools[file_ext])
+box::use(glue[glue])
+box::use(fs[path_rel])
+box::use(stats[setNames])
+LOG <- logger_factory("Task")
+
+# --- 1. 配置加载 ---
+
+#' Load Application Configuration
+#'
+#' Checks for the existence of configuration files (`config.R` or `config.yml`)
+#' and loads the settings. Prioritizes `config.R`.
+load_config <- function() {
+  # 优先加载 R 文件 (支持动态逻辑)
+  if (file.exists("config.R")) {
+    cfg <- tryCatch(
+      source("config.R", local = TRUE, echo = FALSE)[["value"]],
+      error = function(e) {
+        LOG$warn(glue("Error sourcing config.R: {e$message}"))
+        NULL
+      }
+    )
+    if (!is.null(cfg)) return(cfg)
+  }
+
+  # 其次加载 YAML
+  if (file.exists("config.yml")) {
+    return(read_yaml("config.yml"))
+  }
+
+  LOG$warn("Config file not found (config.R or config.yml)")
+  return(list())
+}
+
+# 模块加载时执行一次，避免重复 IO
+CONFIG <- load_config()
+
+# --- 2. 元数据处理核心逻辑 ---
+#' Generate a Flattened List of Task Metadata
+#'
+#' Recursively traverses a nested configuration list to produce a flat list of
+#' task definitions. A node is considered a task if it contains both `mod` and
+#' `func` elements. Task names are generated by joining nested keys with a colon.
+#'
+#' @param meta_tree A list structure containing the configuration tree.
+#'   Defaults to the global object `CONFIG`.
+#' @param name A character string representing the current hierarchical path.
+#'   Defaults to `NULL` for the root level.
+#'
+#' @return A named list where each element represents a task containing its
+#'   hierarchical `name`, `mod`, `func`, and other metadata.
+#' @export
+generate_meta_list <- function(meta_tree = CONFIG, name = NULL) {
+  if (!is.list(meta_tree)) {
+    return(NULL)
+  }
+
+  # Check if the current node is a valid leaf (task definition)
+  # We ensure 'name' is not NULL to avoid treating the root as a task
+  if (all(c("mod", "func") %in% names(meta_tree))) {
+    if (is.null(name)) {
+      return(NULL)
+    }
+    meta <- c(list(name = name), meta_tree)
+    return(setNames(list(meta), name))
+  }
+
+  # Determine hierarchical names for child nodes
+  node_names <- names(meta_tree)
+  child_names <- if (is.null(name)) {
+    node_names
+  } else {
+    paste(name, node_names, sep = ":")
+  }
+
+  # Recursively process child nodes
+  results <- mapply(
+    generate_meta_list,
+    meta_tree = meta_tree,
+    name = child_names,
+    SIMPLIFY = FALSE,
+    USE.NAMES = FALSE
+  )
+
+  # Flatten the list one level to merge recursive results
+  unlist(results, recursive = FALSE)
+}
+
+TASKS <- generate_meta_list()
+
+#' Find the File Path of a Box Module
+#'
+#' Resolves the physical file path for a given module string (e.g., "utils.logger")
+#' based on the `box` package search mechanism. It searches the current
+#' working directory and paths defined in `getOption("box.path")`.
+#'
+#' @param mod_str A character string representing the module name.
+#' @return A character string containing the normalized file path if found.
+#' @importFrom glue glue
+find_module_path <- function(mod_str) {
+  # 1. Normalize module syntax to path syntax (replace . with /)
+  rel_path <- chartr(".", "/", mod_str)
+
+  # 2. Define search roots: current directory and box.path option
+  # unique() avoids redundant checks if '.' is also in box.path
+  search_roots <- unique(c(getwd(), getOption("box.path")))
+
+  # 3. Define candidate filenames:
+  # - Standard script module: path/to/mod.R
+  # - Directory module: path/to/mod/__init__.R
+  candidates <- c(paste0(rel_path, ".R"), file.path(rel_path, "__init__.R"))
+
+  # 4. Iterate through roots to find the existing file
+  for (root in search_roots) {
+    # Construct potential full paths for this root
+    check_paths <- file.path(root, candidates)
+
+    # Identify which candidates exist
+    existing_paths <- check_paths[file.exists(check_paths)]
+
+    if (length(existing_paths) > 0) {
+      # Return the first match found, normalized
+      return(path_rel(existing_paths[1]))
+    }
+  }
+
+  # 5. Error logging if module is not found
+  LOG$error(glue("Module '{mod_str}' not found in search paths: {paste(search_roots, collapse = ', ')}"))
+}
+
+#' Generate Cache File Path from Metadata
+#'
+#' Creates a hierarchical directory structure based on task name and returns
+#' the full path to a cache file. The function splits the task name by colons
+#' to create nested directories and ensures the directory structure exists.
+#'
+generate_task_output_name <- function(meta) {
+  # Validate required metadata
+  if (is.null(meta$name) || !nzchar(meta$name)) {
+    LOG$error("Task name is required and cannot be empty!")
+  }
+
+  # Parse hierarchical path from colon-separated task name
+  path_components <- strsplit(meta$name, ":", fixed = TRUE)[[1]]
+  target_dir <- do.call(file.path, as.list(path_components))
+
+  # Determine cache filename with validation
+  fname <- ifthen(meta$filename, "default.qs")
+  if (file_ext(fname) == "") {
+    fname <- paste0(fname, ".qs")
+  }
+
+  file.path(target_dir, fname)
+}
+
+
+# --- 3. 校验逻辑 ---
+
+#' Validate Information Metadata
+#'
+#' Verifies that the provided metadata object is valid. It ensures all required
+#' components ('name', 'mod', 'func', 'path') are present, non-null, and meet
+#' specific criteria, such as file accessibility and correct file extensions.
+#'
+assert_metadata <- function(meta) {
+  if (is.null(meta)) {
+    LOG$error("Task metadata is NULL")
+  }
+
+  # 1. Validate 'name' (delegated to external function)
+  if (!is.character(meta$name) || length(meta$name) != 1L) {
+    LOG$error("Task 'name' must be a single string.")
+  }
+
+  # 正则允许字母、数字、下划线、短横线，以冒号分隔
+  if (!grepl("^[-_A-Za-z0-9]+(:[-_A-Za-z0-9]+)+$", meta$name)) {
+    LOG$error(glue("Invalid task name format: '{meta$name}'. Expected 'group:subgroup:task'"))
+  }
+
+  tryCatch(
+    find_module_path(meta$mod),
+    error = function(e) LOG$error(glue("Task '{meta$name}': {e$message}"))
+  )
+
+  # 3. Validate 'func' (Function Name)
+  if (is.null(meta$func) || !nzchar(meta$func)) {
+    LOG$error(glue("Task '{meta$name}': 'func' is missing"))
+  }
+
+  # 4. Validate 'path' (File Path)
+  if (is.null(meta$path) || !nzchar(meta$path)) {
+    LOG$error(glue("Task '{meta$name}': Output path is missing"))
+  }
+  if (tolower(file_ext(meta$path)) != "qs") {
+    LOG$error(glue("Task '{meta$name}': Output file must end with .qs"))
+  }
+
+  return(TRUE)
+}
+
+# --- 4. 核心功能 ---
+
+#' Fetch and Validate Task Metadata with Configuration Defaults
+#'
+#' This function retrieves task metadata by merging configuration defaults
+#' with user-provided metadata. It validates inputs, constructs cache paths,
+#' and ensures metadata completeness.
+#'
+#' @param name Character string specifying the task name. Can be NULL if
+#'   `meta` contains a name field. Task names can be hierarchical using
+#'   colon separators (e.g., "parent:child:task").
+#' @param meta List containing task metadata. Can be NULL to use only
+#'   configuration defaults. When provided, values override config defaults.
+#'
+#' @return A list containing the complete task metadata with all required
+#'   fields populated. Throws an error if validation fails.
+#'
+#' @details
+#' The function performs the following operations:
+#' \itemize{
+#'   \item Validates that at least one of `name` or `meta` is provided
+#'   \item Resolves the task name from either parameter
+#'   \item Looks up the task in the pre-loaded TASKS registry (from `config.R` or `config.yml`)
+#'   \item Merges config defaults with user-provided metadata
+#'   \item Generates cache path if not specified
+#'   \item Validates final metadata completeness
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' # Fetch metadata using task name only
+#' meta <- fetch_task_meta_with(name = "data:processing:clean")
+#'
+#' # Override specific metadata fields
+#' meta <- fetch_task_meta_with(
+#'   name = "analysis:model",
+#'   meta = list(version = "2.0", args = list(method = "lm"))
+#' )
+#' }
+#'
+#' @export
+fetch_task_meta_with <- function(name = NULL, meta = NULL) {
+  # 1. 从全局配置中提取基础配置
+  base_meta <- list()
+  if (!is.null(name)) {
+    name <- trimws(name)
+    if (!name %in% names(TASKS)) {
+      LOG$error(glue("Task '{name}' is not defined in config."))
+    }
+    base_meta <- TASKS[[name]]
+  }
+
+  # 2. 合并传入的 meta (覆盖配置)
+  final_meta <- modifyList(base_meta, if (is.null(meta)) list() else meta)
+
+  # 确保有名字 (如果只传了 meta 没传 name)
+  if (is.null(final_meta$name) && !is.null(name)) {
+    final_meta$name <- name
+  }
+
+  # 3. 生成输出路径
+  if (is.null(final_meta$path)) {
+    final_meta$path <- generate_task_output_name(final_meta)
+  }
+
+  # 4. 确保 args 存在
+  final_meta$args <- ifthen(final_meta$args, list())
+
+  # 5. 强校验 (失败直接 Stop)
+  assert_metadata(final_meta)
+
+  final_meta
+}
+
+#' Cache and Retrieve Task Results
+#'
+#' Executes a task defined in the configuration file and caches its result.
+#' Supports hierarchical task definitions and automatic cache invalidation.
+#'
+#' @param name Character string specifying the task path (colon-separated hierarchy).
+#' @param meta Optional list of metadata fields to override config defaults.
+#'
+#' @return The cached result of the task execution invisibly. Throws an error if the task fails.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' run_task("data:processing:clean")
+#' run_task("model:train", meta = list(update = TRUE))
+#' }
+run_task <- function(name = NULL, meta = NULL) {
+  # 获取并校验元数据 (如果有错误会直接在此处停止)
+  task_meta <- fetch_task_meta_with(name, meta)
+
+  LOG$info(glue("Starting task: {task_meta$name}"))
+
+  # 准备目录 (Lazy creation: 只有真正运行时才创建目录)
+  dir.create(dirname(task_meta$path), recursive = TRUE, showWarnings = FALSE)
+
+  # Execute and cache function results with error handling
+  tryCatch(
+    {
+      val <- cache_result(
+        execute_box_mod_func(task_meta$mod, task_meta$func, task_meta$args),
+        file = task_meta$path,
+        update = task_meta$update
+      )
+      LOG$info(glue("Task '{task_meta$name}' completed. Cache: {task_meta$path}"))
+      invisible(val)
+    },
+    error = function(e) {
+      # 记录错误并向上抛出，确保 go-task 知道任务失败了
+      LOG$error(glue("Task '{task_meta$name}' FAILED: {e$message}"))
+      stop(e)
+    }
+  )
+}
+
+#' Write Tasks to a Category-Specific YAML File
+#'
+#' This function processes a list of tasks and writes them to a YAML file within a
+#' "tasks" directory. It automatically handles directory creation, prepends a
+#' timestamped warning header, and utilizes `gen_task_content` for formatting.
+#'
+#' @param taskfile_name A character string for the output filename (without directory).
+#'   Defaults to `"r_tasks.yml"`. The file is written to the `tasks/` directory.
+#'
+#' @return Returns `NULL` invisibly. The function is called for its side effect
+#'   of writing files to disk.
+#' @export
+write_taskfile <- function(taskfile_name = "r_tasks.yml") {
+  if (length(TASKS) == 0) {
+    LOG$warn("No tasks found to write.")
+    return(invisible(NULL))
+  }
+
+  # 构造 Go-Task 格式的列表
+  # 遍历 TASKS 列表
+  go_tasks <- lapply(TASKS, function(meta) {
+    # 在生成文件时做一次校验，如果有问题则跳过该任务
+    tryCatch(
+      {
+        # 临时补全 path 做校验
+        if (is.null(meta$path)) {
+          meta$path <- generate_task_output_name(meta)
+        }
+        assert_metadata(meta)
+
+        # 构造命令：Go-Task 会将 {{.TASK}} 替换为任务名
+        cmd_str <- sprintf('Rscript -e \'box::use(R/utils/Task); Task$run_task("{{.TASK}}")\'')
+
+        task <- modifyList(
+          ifthen(meta$task, list()),
+          list(
+            desc = ifthen(meta$desc, glue("Run task: {meta$name}")),
+            cmds = list(cmd_str), # go-task 使用 cmds 列表
+          )
+        )
+        task$sources <- c(task$sources, find_module_path(meta$mod)) |> as.list()
+        task$generates <- c(task$generates, meta$path) |> as.list()
+        task
+      },
+      error = function(e) {
+        LOG$warn(glue("Skipping invalid task '{meta$name}': {e$message}"))
+        NULL
+      }
+    )
+  })
+
+  # 移除 NULL (跳过的任务)
+  go_tasks <- Filter(Negate(is.null), go_tasks)
+
+  # 写入文件
+  # Prepare directory path
+  output_dir <- "tasks"
+  if (!dir.exists(output_dir)) {
+    dir.create(output_dir, recursive = TRUE)
+  }
+  output_file <- file.path(output_dir, taskfile_name)
+
+  con <- file(output_file, open = "w", encoding = "UTF-8")
+  on.exit(close(con), add = TRUE)
+
+  writeLines(
+    c(
+      "# [WARNING] This file is automatically generated by a script. Do not modify it manually.",
+      format(Sys.time(), "# Modified at: %Y-%m-%d %H:%M:%S"),
+      "# https://taskfile.dev",
+      "version: '3'",
+      ""
+    ),
+    con
+  )
+
+  # 写入 tasks 节点
+  write_yaml(list(tasks = go_tasks), file = con)
+
+  LOG$info(glue("Taskfile generated at {output_file} ({length(go_tasks)} tasks)"))
+
+  invisible(NULL)
+}
+</file>
+
+<file path="share/R/utils/Tool.R">
+box::use(R/utils/Logger[logger_factory])
+box::use(glue[glue])
+LOG <- logger_factory("Tools")
+
+#' Conditional Value Selection with Multiple Fallbacks
+#'
+#' Returns the first non-NULL value from a sequence of arguments.
+#' This function provides a concise way to handle NULL values with multiple
+#' fallback defaults, similar to the coalesce operation in SQL.
+#'
+#' @param ... Any number of values to check. Can be of any type.
+#'   The function evaluates arguments from left to right and returns
+#'   the first non-NULL value encountered.
+#'
+#' @return Returns the first non-NULL argument. If all arguments are NULL,
+#'   returns NULL.
+#'
+#' @examples
+#' ifthen(NULL, 5)              # Returns 5
+#' ifthen(10, 5)                # Returns 10
+#' ifthen(NA, "default")        # Returns NA (not NULL)
+#' ifthen(0, 1)                 # Returns 0 (not NULL)
+#' ifthen(NULL, NULL, "third")  # Returns "third"
+#' ifthen(NULL, NULL, NULL)     # Returns NULL
+#'
+#' @export
+ifthen <- function(...) {
+  # Capture all arguments as a list for efficient iteration
+  args <- list(...)
+
+  # Early return if no arguments provided
+  if (length(args) == 0L) {
+    return(NULL)
+  }
+
+  # Iterate through arguments and return first non-NULL value
+  for (arg in args) {
+    if (!is.null(arg)) return(arg)
+  }
+
+  # Return NULL if all arguments are NULL
+  NULL
+}
+
+#' Execute a Function from a Dynamically Loaded Box Module
+#'
+#' This function dynamically loads a specified module using `box`, retrieves a
+#' specific function from it, and executes that function with the provided
+#' arguments.
+#'
+#' @param mod A character string specifying the module path or name.
+#' @param func A character string specifying the function name to retrieve from the module.
+#' @param args A list of arguments to pass to the function.
+#'
+#' @return The result of the executed function. Throws an error if the module
+#'   cannot be loaded, if `func` is not found, or if execution fails.
+#' @export
+execute_box_mod_func <- function(mod, func, args) {
+  stopifnot(is.character(mod), is.character(func), is.list(args))
+
+  # Validate mod and func to prevent injection via eval(parse(...))
+  if (!grepl("^[A-Za-z0-9/_.-]+$", mod)) {
+    LOG$error(glue("Invalid module path: '{mod}'"))
+  }
+  if (!grepl("^[A-Za-z][A-Za-z0-9_.]*$", func)) {
+    LOG$error(glue("Invalid function name: '{func}'"))
+  }
+
+  # Dynamically load the module via box
+  box_expr <- sprintf("box::use(%s[%s])", mod, func)
+  tryCatch(
+    eval(parse(text = box_expr), envir = environment()),
+    error = function(e) {
+      LOG$error(glue("Failed to load module '{mod}': {e$message}"))
+    }
+  )
+
+  # Retrieve and validate the function object
+  if (!exists(func, envir = environment(), inherits = TRUE)) {
+    LOG$error(glue("'{func}' not found in module '{mod}' after loading."))
+  }
+  func_obj <- get(func, envir = environment(), inherits = TRUE)
+  if (!is.function(func_obj)) {
+    LOG$error(glue("'{func}' from module '{mod}' is not a function."))
+  }
+
+  # Execute the function with provided arguments
+  tryCatch(
+    do.call(func_obj, args),
+    error = function(e) {
+      LOG$error(glue("Error executing '{func}': {e$message}"))
+    }
+  )
+}
+</file>
+
+<file path="share/air.toml">
+[format]
+line-width = 120
+indent-width = 2
+indent-style = "space"
+line-ending = "auto"
+persistent-line-breaks = true
+exclude = []
+default-exclude = true
+skip = ["use"]
+</file>
+
+<file path="Makefile.PL">
+use ExtUtils::MakeMaker;
+
+# Stub install_share since we handle it manually in postamble
+*install_share = sub {};
+
+install_share('share');
+
+package MY;
+use strict;
+use warnings;
+
+# Force manual postamble to ensure dotfiles (.pandoc) are installed
+sub postamble {
+    my $share_src = 'share';
+    
+    return <<"MAKE_FRAG";
+install ::
+\t\$(NOECHO) \$(ECHO) "Manually installing share directory..."
+\tID=\$\$(id -u); \\
+\tif [ "\$\$ID" -eq 0 ] && [ -n "\$\$SUDO_USER" ]; then \\
+\t\tUSER_HOME=\$\$(eval echo ~\$\$SUDO_USER); \\
+\telse \\
+\t\tUSER_HOME=\$(HOME); \\
+\tfi; \\
+\tSHARE_DIR="\$\${XDG_DATA_HOME:-\$\$USER_HOME/.local/share}/Rinit"; \\
+\t\$(MKPATH) "\$\$SHARE_DIR"; \\
+\t\$(CP) -rf $share_src/. "\$\$SHARE_DIR/"; \\
+\t\$(ECHO) "Share directory installed to \$\$SHARE_DIR"; \\
+\t\$(CHMOD) -R u+w "\$\$SHARE_DIR"
+
+MAKE_FRAG
+}
+package main;
+
+
+
+WriteMakefile(
+    NAME             => 'RInit',
+    VERSION_FROM     => 'lib/RInit/App.pm',
+    ABSTRACT         => 'A modern R project scaffolding tool written in Perl.',
+    AUTHOR           => 'Your Name <your.email@example.com>',
+    EXE_FILES        => ['bin/rinit'],
+    CONFIGURE_REQUIRES => {
+        'ExtUtils::MakeMaker' => 0,
+    },
+    PREREQ_PM        => {
+        'File::Path' => 0,
+        'File::Basename' => 0,
+        'File::Spec' => 0,
+        'Cwd' => 0,
+        'Getopt::Long' => 0,
+        'Term::ANSIColor' => 0,
+        'Pod::Usage' => 0,
+    },
+    test             => { TESTS => 't/*.t' },
+);
+</file>
+
+<file path="README.md">
+# rinit
+
+A modern R project scaffolding tool written in Perl.
+
+## Subtrees
+
+- 📦 `r-box`: from git@github.com:liubianshi/r-box.git (branch: master)，
+  update mode: `git subtree pull --prefix=r-box box-remote master`
+
+## Features
+
+- 🚀 Quick project initialization with sensible defaults
+- 🌍 Multi-language support (English, Chinese)
+- 📦 Integrated with renv for dependency management
+- 🔧 DVC support for data version control
+- 📝 Quarto-ready with customizable templates
+- 🎨 Citation styles and Word templates support
+
+## Installation
+
+### Recommended way (via cpanm)
+
+You can install `rinit` easily using `cpanm`. This ensures all dependencies are handled correctly.
+
+```bash
+# Install cpanminus if you haven't already
+sudo apt-get install cpanminus # Debian/Ubuntu
+# or
+curl -L https://cpanmin.us | perl - --sudo App::cpanminus
+
+# Install rinit
+git clone https://github.com/yourusername/rinit.git
+cd rinit
+cpanm .
+```
+
+### Manual Installation
+
+If you prefer `make`:
+
+```bash
+perl Makefile.PL
+make
+make test
+make install
+```
+
+## Usage
+
+```bash
+# Create English project (default)
+rinit my_analysis
+
+# Create Chinese project
+rinit my_analysis zh
+
+# View help
+rinit --help
+```
+
+## Project Structure
+
+The generated project structure is designed for reproducibility:
+
+```
+my_project/
+├── raw/                # Raw data (git-ignored, DVC tracked)
+├── R/                  # R source code
+│   ├── import/        # Data import scripts
+│   ├── build/         # Data preparation scripts
+│   ├── analysis/      # Analysis scripts
+│   ├── check/         # Data validation
+│   ├── utils/         # Utility functions
+│   └── lib/           # Helper libraries
+├── out/               # Generated outputs (git-ignored)
+│   ├── data/          # Intermediate data
+│   ├── tables/
+│   ├── figures/
+│   └── manuscript/
+├── doc/               # Documentation
+├── log/               # Execution logs
+├── cache/             # Cached results
+├── .pandoc/           # Document templates
+│   ├── csl/          # Citation styles
+│   └── docx/         # Word templates
+├── .Rprofile         # Project R configuration
+├── _metadata.yml     # Quarto metadata
+└── Snakefile         # Workflow automation
+```
+
+## Configuration
+
+### Citation Styles
+
+Place your CSL files in `.pandoc/csl/`. Update `_metadata.yml` to reference them:
+
+```yaml
+csl: .pandoc/csl/your-style.csl
+```
+
+### Word Templates
+
+Customize your Word output by creating reference documents and placing them in `.pandoc/docx/`.
+
+## Requirements
+
+- Perl 5.10+
+- R 4.0+
+- Git (optional)
+- DVC (optional, for large datasets)
+
+## License
+
+MIT License
+</file>
+
+<file path="share/README.md">
+# __PROJECT_NAME__
+
+## Project Description
+
+Describe your research objectives here.
+
+## Replication Guide
+
+This project follows a reproducible research workflow.
+
+1. **Open Project**: Open the directory in your preferred editor (VS Code,
+   RStudio, etc.).
+2. **Restore Environment**: Run `renv::restore()` to install dependencies (if using renv).
+3. **Prepare Data**:
+   - If using DVC: Run `dvc pull`
+   - Otherwise, ensure raw data is in `/data` directory.
+4. **Run Analysis**:
+   - Execute main script: `source("R/main.R")`
+   - Or use task: `task <task-name>` (see [Task System](#task-system) below)
+
+## Directory Structure
+
+- `/R/`: R source code (build, analysis, check, utils)
+- `/data/`: Raw data (read-only, do not modify manually)
+- `/out/`: Generated outputs (ignored by git)
+- `/cache/`: Cached data (ignored by git)
+- `/doc/`: Documentation and manuscripts
+- `/log/`: Execution logs
+- `/template/`: Document templates (CSL, DOCX)
+- `/tasks/`: Auto-generated task definitions for go-task (do not edit manually)
+
+## Task System
+
+This project uses [go-task](https://taskfile.dev) for task automation.
+Tasks are defined in `config.yml` or `config.R` and automatically compiled into `tasks/r_tasks.yml`.
+
+### Installation
+
+```bash
+# macOS / Linux (via install script)
+sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+
+# Arch Linux
+pacman -S go-task
+
+# macOS (Homebrew)
+brew install go-task
+```
+
+### How Tasks Work
+
+Tasks are defined in `config.yml` (or `config.R`) under a hierarchical structure.
+Each leaf node with `mod` and `func` fields becomes an executable task:
+
+```yaml
+# config.yml
+cache:
+  data:
+    my_dataset: # → task name: cache:data:my_dataset
+      mod: R/build/Data # box module path (R/build/Data.R)
+      func: load_data # function to call within the module
+      update: null # cache update strategy (null = use existing if available)
+      args: null # arguments passed to the function
+```
+
+Task names follow a colon-separated hierarchy matching the config tree depth (e.g.,
+`cache:data:my_dataset`).
+
+### Defining New Tasks
+
+Tasks can be defined in either `config.yml` (static) or `config.R` (dynamic).
+Only one is active at a time:
+`config.R` takes precedence if it exists and returns a non-`NULL` value;
+they are **not** merged.
+
+**Option A: `config.yml`** — for simple, static task definitions:
+
+```yaml
+cache:
+  analysis:
+    regression:
+      mod: R/analysis/Model # box module path (R/analysis/Model.R)
+      func: run_regression # exported function to call
+      update: null # cache strategy (null = skip if cache exists)
+      args:
+        method: lm
+        controls: [age, income]
+```
+
+**Option B: `config.R`** — for dynamic task definitions (e.g., looping over datasets).
+The file must return the config list as its **last expression**:
+
+```r
+# config.R
+datasets <- c("survey", "panel", "census")
+
+cache_tasks <- setNames(
+  lapply(datasets, function(d) {
+    list(
+      mod = paste0("R/build/", d),
+      func = "load_data",
+      update = NULL,
+      args = list(year = 2023)
+    )
+  }),
+  datasets
+)
+
+# Last expression = return value
+list(
+  cache = list(
+    data = cache_tasks
+  )
+)
+```
+
+This generates tasks `cache:data:survey`, `cache:data:panel`, `cache:data:census`.
+
+2. Regenerate the taskfile:
+
+   ```bash
+   task build_r_tasks
+   ```
+
+   This runs `Rscript -e 'box::use(R/utils/Task); Task$write_taskfile()'`
+   and updates `tasks/r_tasks.yml`.
+
+### Running Tasks
+
+```bash
+# List all available tasks
+task --list
+
+# Run a specific task (colon-separated hierarchy)
+task cache:data:my_dataset
+
+# Run all tasks (default)
+task
+
+# Force re-run a task (ignore cache)
+task --force cache:analysis:regression
+
+# Watch for file changes and rebuild automatically
+task --watch build_r_tasks
+```
+
+### Task Caching
+
+Tasks use file-based caching via the `cache_result()` function.
+Outputs are stored as `.qs` files under `cache/` following the task name hierarchy:
+
+- `cache:data:my_dataset` → `cache/data/my_dataset/default.qs`
+
+go-task tracks `sources` (input R module files) and `generates` (output cache files).
+A task is skipped if its sources haven't changed since the last run.
+
+### Built-in Tasks
+
+| Task | Description |
+|------|-------------|
+| `build_r_tasks` | Regenerate `tasks/r_tasks.yml` from `config.yml` |
+</file>
+
+<file path="share/taskfile.yml">
+# https://taskfile.dev
+version: "3"
+
+# Load environment variables from .env file for configuration context
+dotenv:
+  - .env
+
+includes:
+  lib:
+    taskfile: tasks/r_tasks.yml
+    flatten: true
+    optional: true
+
+tasks:
+  build_r_tasks:
+    desc: update tasks/r_tasks.yml
+    sources:
+      - R/utils/Task.R
+      - config.yml
+      - config.R
+    generates:
+      - tasks/r_tasks.yml
+    watch: true
+    method: checksum
+    cmds:
+      - Rscript -e 'box::use(R/utils/Task); Task$write_taskfile()'
+</file>
+
+<file path="t/01-basic.t">
+use strict;
+use warnings;
+use Test::More;
+use File::Temp qw(tempdir);
+use File::Basename;
+
+use File::Spec;
+use File::Path qw(remove_tree);
+use Cwd;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+use RInit::App;
+
+# plan tests => 5;
+
+# Create a temporary directory for the test
+my $temp_dir     = tempdir( CLEANUP => 1 );
+my $original_cwd = getcwd();
+
+# Switch to temp directory
+chdir($temp_dir) or die "Cannot chdir to $temp_dir: $!";
+
+# Test Project Name
+my $project_name = "TestProject";
+
+# Run the application (mocking arguments)
+# We need to capture stdout/stderr to avoid cluttering test output,
+# but for simplicity in this basic test we'll just let it print or redirect if needed.
+# To properly test, we might want to capture output, but checking file existence is more critical.
+
+# Validating results
+# App.pm changes directory to the created project, so we verify files relative to the new CWD
+# or we can check absolute paths.
+
+# Handle the prompt by mocking STDIN with "n" (skip subtree)
+{
+  open my $stdin, '<', \ "n\n";
+  local *STDIN = $stdin;
+  eval { RInit::App->run($project_name); };
+}
+if ($@) {
+  diag("Error running App: $@");
+}
+ok( !$@, "App ran without dying" );
+
+# The application should NOT change the CWD of the caller.
+# So we need to manually enter the project directory to verify its contents.
+chdir($project_name) or die "Cannot chdir to $project_name: $!";
+my $db_name = basename( getcwd() );
+is( $db_name, $project_name, "Verified we are in project dir" );
+
+ok( -f "R/main.R",     "R/main.R created" );
+ok( -f ".Rprofile",    ".Rprofile created" );
+ok( -f "taskfile.yml", "taskfile.yml created" );
+
+# Cleanup happens automatically via tempdir CLEANUP => 1,
+# but we should change back to original execution directory first just in case
+chdir($original_cwd);
+
+done_testing();
+</file>
+
+<file path="lib/RInit/App.pm">
+package RInit::App;
+our $VERSION = '0.1.0';
+
+use strict;
+use warnings;
+use File::Path qw(make_path);
+use File::Spec;
+use File::Basename;
+use Cwd;
+use File::Copy;
+use RInit::Templates;
+use Getopt::Long qw(GetOptionsFromArray);
+use Term::ANSIColor;
+use Pod::Usage;
+
+#' Main entry point for the RInit application
+#'
+#' Parses command-line arguments, validates input, and orchestrates
+#' the creation of a new R project with standardized structure.
+#'
+#' @param $class The class name (unused in this implementation)
+#' @param @args Command-line arguments array
+#' @return void
+#' @dies on invalid input or directory conflicts
+sub run {
+  my ( $class, @args ) = @_;
+
+  my $lang  = 'en';
+  my $help  = 0;
+  my $setup = 0;
+
+  # Parse command-line options from provided array
+  GetOptionsFromArray(
+    \@args,
+    'lang=s' => \$lang,
+    'setup'  => \$setup,
+    'help|?' => \$help
+    )
+    or pod2usage( -exitval => 2, -input => __FILE__ );
+
+  pod2usage( -exitval => 0, -verbose => 2, -input => __FILE__ ) if $help;
+
+  if ($setup) {
+    _run_setup();
+    exit 0;
+  }
+
+  # Extract project name from remaining arguments
+  my $project_name = shift @args;
+
+  unless ($project_name) {
+    print colored( ['red'], "Error: Please provide a project name" ), "\n";
+    pod2usage( -exitval => 1, -input => __FILE__ );
+  }
+
+  # Construct project root directory path
+  my $root_dir = File::Spec->catdir( getcwd(), $project_name );
+  _check_directory_exists( $project_name, $root_dir );
+
+  print colored( ['blue'], "🚀 Initializing R project: $project_name ..." ), "\n";
+
+  # Execute project setup steps
+  _create_directory_structure( $root_dir, $project_name );
+  _create_config_files( $project_name, $root_dir, $lang );
+  _initialize_version_control($root_dir);
+  _show_completion_message($project_name);
+
+  return;
+}
+
+sub _run_setup {
+  require RInit::Manifest;
+
+  print colored( ['blue'], "🔧 Setting up user templates..." ), "\n";
+
+  # We need to bypass the priority check in Manifest to find the *source* share dir
+  # Currently Manifest->_find_share_dir will return the user dir if it exists!
+  # So we must temporarily unset env or look harder.
+  # Actually, if we are setting UP, we want the DIST share dir, not the user one.
+  # But Manifest->_find_share_dir is designed to return the best one.
+  # We should probably expose a way to get the dist share dir or just find it here.
+  # A trick is to modify Manifest to allow skipping the user check, or just implement a custom finder here.
+  # Reusing _find_share_dir is risky if the user dir already exists partially.
+
+  # Let's try to find the distribution share directory explicitly.
+  # We can copy the logic from Manifest but skip the user_share check.
+
+  my $source_dir;
+
+  # Check development mode first
+  my $dir = File::Basename::dirname(__FILE__);
+  while ( $dir && $dir ne '/' && $dir !~ m{^[a-z]:[/\\]?$}i ) {
+    my $candidate = File::Spec->catdir( $dir, 'share' );
+    if ( -d $candidate && -f File::Spec->catfile( $dir, 'Makefile.PL' ) ) {
+      $source_dir = $candidate;
+      last;
+    }
+    my $parent = File::Basename::dirname($dir);
+    last if $parent eq $dir;
+    $dir = $parent;
+  }
+
+  # If not found, check File::ShareDir
+  unless ($source_dir) {
+    eval { require File::ShareDir; };
+    unless ($@) {
+      my $dist_dir = eval { File::ShareDir::dist_dir('RInit') };
+      if ( $dist_dir && -d $dist_dir ) {
+        $source_dir = $dist_dir;
+      }
+    }
+  }
+
+  # Fallback to relative to script
+  if ( !$source_dir ) {
+    my $script_dir = File::Basename::dirname($0);    # This might be bin/
+    if ( my $check = File::Spec->catdir( $script_dir, '..', 'share' ) ) {
+      $source_dir = $check if -d $check;
+    }
+  }
+
+  unless ( $source_dir && -d $source_dir ) {
+    die "Could not locate source 'share' directory to copy from.";
+  }
+
+  my $xdg_data_home = $ENV{XDG_DATA_HOME} || File::Spec->catdir( $ENV{HOME}, '.local', 'share' );
+  my $target_dir    = File::Spec->catdir( $xdg_data_home, 'Rinit' );
+
+  print "Source: $source_dir\n";
+  print "Target: $target_dir\n";
+
+  make_path($target_dir);
+
+  # Find all files in source
+  use File::Find;
+  my $overwrite_all = 0;
+  my $skip_all      = 0;
+
+  find(
+    sub {
+      return if -d $_;
+      my $rel      = File::Spec->abs2rel( $File::Find::name, $source_dir );
+      my $dest     = File::Spec->catfile( $target_dir, $rel );
+      my $dest_dir = File::Basename::dirname($dest);
+
+      make_path($dest_dir) unless -d $dest_dir;
+
+      if ( -e $dest ) {
+        return if $skip_all;
+
+        unless ($overwrite_all) {
+          print colored( ['yellow'], "Conflict: $rel exists.\n" );
+          print "Overwrite? [y]es, [n]o, [a]ll, [N]one (skip set): ";
+          my $ans = <STDIN>;
+
+          # Handle EOF (e.g. pipe closed) by skipping remaining
+          unless ( defined $ans ) {
+            $skip_all = 1;
+            return;
+          }
+
+          chomp $ans;
+
+          if ( $ans =~ /^a/i ) {
+            $overwrite_all = 1;
+          }
+          elsif ( $ans =~ /^N/i ) {
+            $skip_all = 1;
+            return;
+          }
+          elsif ( $ans =~ /^n/i ) {
+            return;
+          }
+
+          # Default is no overwrite if they just hit enter (empty string)
+          return if $ans eq '';
+        }
+      }
+
+      copy( $File::Find::name, $dest ) or warn "Failed to copy $_: $!\n";
+      print "Copied $rel\n";
+
+    },
+    $source_dir
+  );
+
+  print colored( ['green'], "Setup complete!" ), "\n";
+  return;
+}
+
+#' Verify that the target directory does not already exist
+#'
+#' @param $project_name The name of the project
+#' @param $root_dir The full path to the project directory
+#' @return void
+#' @dies if directory already exists
+sub _check_directory_exists {
+  my ( $project_name, $root_dir ) = @_;
+
+  if ( -d $root_dir ) {
+    print colored( ['red'], "Error: Directory '$project_name' already exists" ), "\n";
+    exit 1;
+  }
+  return;
+}
+
+#' Create the standard R project directory structure
+#'
+#' Uses RInit::Manifest to determine which directories to create.
+#'
+#' @param $root_dir The root directory path for the project
+#' @param $project_name The name of the project
+#' @return void
+#' @dies if directory creation fails
+sub _create_directory_structure {
+  my ( $root_dir, $project_name ) = @_;
+
+  make_path($root_dir) or die "Cannot create directory: $!";
+
+  require RInit::Manifest;
+  my $dirs = RInit::Manifest->get_dirs($project_name);
+
+  # Create each directory in the manifest
+  for my $dir (@$dirs) {
+    make_path( File::Spec->catdir( $root_dir, $dir ) )
+      or die "Cannot create directory '$dir': $!";
+  }
+
+  print colored( ['green'], "✅ Directory structure created" ), "\n";
+  return;
+}
+
+#' Generate and write project configuration files
+#'
+#' Retrieves file templates from RInit::Templates and writes them
+#' to the appropriate locations in the project structure.
+#'
+#' @param $project_name The name of the project
+#' @param $root_dir The root directory path
+#' @param $lang Language code for localized templates
+#' @return void
+#' @dies if file operations fail
+sub _create_config_files {
+  my ( $project_name, $root_dir, $lang ) = @_;
+
+  my $operations = RInit::Templates->get_project_files( $project_name, $lang );
+
+  for my $op (@$operations) {
+    my $target = File::Spec->catfile( $root_dir, $op->{target} );
+    _ensure_dir($target);
+
+    if ( $op->{source} ) {
+      copy( $op->{source}, $target ) or die "Copy failed: $!";    # Copy from source file
+    }
+    elsif ( defined $op->{content} ) {
+      _write_file( $target, $op->{content} );                     # Write content directly
+    }
+  }
+
+  print colored( ['green'], "✅ Configuration files created" ), "\n";
+  return;
+}
+
+#' Ensure parent directory exists for a given file path
+#'
+#' @param $filename The full path to a file
+#' @return void
+#' @dies if directory creation fails
+sub _ensure_dir {
+  my ($filename) = @_;
+  my $dir = dirname($filename);
+
+  if ( $dir && !-d $dir ) {
+    make_path($dir) or die "Cannot create directory '$dir': $!";
+  }
+  return;
+}
+
+#' Write content to a file
+#'
+#' @param $filename The path to the file to write
+#' @param $content The content to write to the file
+#' @return void
+#' @dies if file cannot be opened or written
+sub _write_file {
+  my ( $filename, $content ) = @_;
+
+  open my $fh, '>', $filename or die "Cannot write to $filename: $!";
+  print $fh $content;
+  close $fh or die "Cannot close $filename: $!";
+
+  return;
+}
+
+#' Initialize version control systems (Git and DVC)
+#'
+#' Sets up Git repository with a subtree for r-box utilities,
+#' and optionally initializes DVC for data versioning.
+#'
+#' @param $root_dir The root directory of the project
+#' @return void
+#' @dies if directory operations fail
+sub _initialize_version_control {
+  my ($root_dir) = @_;
+
+  # Validate input
+  die "Root directory not specified"         unless defined $root_dir;
+  die "Directory '$root_dir' does not exist" unless -d $root_dir;
+
+  # Change to project directory
+  my $original_dir = getcwd();
+  chdir($root_dir) or die "Cannot change to directory '$root_dir': $!";
+
+  # Initialize Git if available
+  if ( _command_exists('git') ) {
+
+    # Initialize git, add files, and create initial commit
+    my $git_init_cmd = 'git init -q && git add . && git commit -q -m "Initial commit"';
+
+    if ( system($git_init_cmd) == 0 ) {
+      print colored( ['green'], "✅ Git repository initialized" ), "\n";
+
+      # Add the r-box subtree
+      if ( _prompt_confirm("Do you want to add the r-box subtree (utils)?") ) {
+        my $box_remote  = 'git@github.com:liubianshi/r-box.git';
+        my $box_branch  = "master";
+        my $subtree_cmd = "git remote add box-remote $box_remote && "
+          . "git subtree add --prefix=r-box $box_remote $box_branch --squash 2>&1";
+        if ( system($subtree_cmd) != 0 ) {
+          print colored( ['yellow'], "⚠️  Failed to add r-box subtree (check network connection)" ), "\n";
+        }
+      }
+      else {
+        print colored( ['blue'], "ℹ️  Skipping r-box subtree" ), "\n";
+      }
+    }
+    else {
+      print colored( ['yellow'], "⚠️  Git initialization failed" ), "\n";
+    }
+  }
+  else {
+    print colored( ['red'], "⚠️  Git not found, skipping Git initialization" ), "\n";
+  }
+
+  # Initialize DVC if available
+  if ( _command_exists('dvc') ) {
+    if ( system('dvc init --quiet 2>&1') == 0 ) {
+      print colored( ['green'], "✅ DVC (Data Version Control) initialized" ), "\n";
+    }
+    else {
+      print colored( ['yellow'], "⚠️  DVC initialization failed" ), "\n";
+    }
+  }
+  else {
+    print colored( ['blue'], "ℹ️  DVC not detected. For large datasets (>100MB), install DVC: pip install dvc" ), "\n";
+  }
+
+  # Return to original directory
+  chdir($original_dir) or die "Cannot return to original directory: $!";
+
+  return;
+}
+
+#' Check if a command exists in the system PATH
+#'
+#' Uses 'command -v' for portable command existence checking
+#' without executing the command.
+#'
+#' @param $cmd The command name to check
+#' @return Boolean: 1 if command exists, 0 otherwise
+sub _command_exists {
+  my ($cmd) = @_;
+
+  # Validate command name to prevent injection
+  return 0 unless defined $cmd && $cmd =~ /^[\w-]+$/;
+
+  # Use command -v for portable existence check
+  return system("command -v $cmd > /dev/null 2>&1") == 0;
+}
+
+#' Display project initialization completion message
+#'
+#' @param $project_name The name of the initialized project
+#' @return void
+sub _show_completion_message {
+  my ($project_name) = @_;
+
+  print "\n", colored( ['blue'], "🎉 Project '$project_name' initialized successfully!" ), "\n";
+  print "👉 Next steps:\n";
+  print "   cd $project_name\n";
+  print "   Or run: R\n";
+
+  return;
+}
+
+#' Prompt user for confirmation (default No)
+#'
+#' @param $question The question to ask
+#' @return Boolean: 1 for Yes, 0 for No
+sub _prompt_confirm {
+  my ($question) = @_;
+  print colored( ['cyan'], "$question [y/N]: " );
+  my $ans = <STDIN>;
+  chomp $ans if defined $ans;
+  return $ans && $ans =~ /^y/i;
+}
+
+1;
+
+__END__
+
+=head1 NAME
+
+rinit - A modern R project scaffolding tool
+
+=head1 SYNOPSIS
+
+rinit [options] [project_name]
+
+ Options:
+   --help, -?       Show this help message
+   --lang           Specify language variant (en/zh, default: en)
+
+=head1 DESCRIPTION
+
+B<rinit> initializes a new R project with a standardized directory structure,
+useful defaults, and optional configuration for different languages.
+
+It sets up:
+-   Standard directory structure (R/, data/, out/, etc.)
+-   Git and DVC version control
+-   Quarto/RMarkdown templates
+-   Dependency management with renv
+
+=head1 ARGUMENTS
+
+=over 4
+
+=item B<project_name>
+
+The name of the directory to create for the new project.
+
+=back
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<--lang>
+
+Optional language code ('en' or 'zh'). Defaults to 'en'.
+
+=item B<--help>
+
+Print a brief help message and exits.
+
+=back
+
+=head1 EXAMPLES
+
+ rinit my_analysis
+ rinit --lang zh my_analysis
+ rinit --help
+
+=cut
+</file>
+
+<file path="lib/RInit/Manifest.pm">
+package RInit::Manifest;
+
+use strict;
+use warnings;
+use File::Find;
+use File::Spec;
+use File::Basename;
+use Cwd qw(abs_path getcwd);
+
+=head1 NAME
+
+RInit::Manifest - File manifest management for RInit project initialization
+
+=head1 SYNOPSIS
+
+    my $files = RInit::Manifest->get_files('MyProject', 'en');
+
+=head1 DESCRIPTION
+
+This module handles the discovery and processing of template files for
+project initialization, including metadata selection and file transformations.
+
+=cut
+
+=head2 get_dirs
+
+Returns a list of directories to be created for the project.
+
+    my $dirs = RInit::Manifest->get_dirs($project_name, $variant);
+
+Parameters:
+    $class        - Class name (method called as class method)
+    $project_name - Name of the project being initialized (unused)
+    $variant      - Language/variant code (unused)
+
+Returns:
+    ArrayRef of directory paths to create
+
+=cut
+
+sub get_dirs {
+  my ( $class, $project_name, $variant ) = @_;
+
+  # Standard R project directory structure
+  # Note: $project_name and $variant are reserved for future customization
+  my $config_tree = {
+    R     => { import => 1, build  => 1, analysis => 1, check => 1, utils => 1, lib => 1, },
+    raw   => { data   => 1, doc    => 1 },
+    cache => { data   => 1, doc    => 1 },
+    out   => { data   => 1, tables => 1, figures => 1, manuscript => 1, },
+    doc   => 1,
+    log   => 1,
+    tasks => 1,
+  };
+
+  # Recursive helper to flatten tree structure into list of paths
+  # Uses lexicographic ordering for consistent output
+  my $tree_to_list;
+  $tree_to_list = sub {
+    my ( $tree, $prefix ) = @_;
+    $prefix //= '';
+    my @list;
+
+    for my $key ( sort keys %$tree ) {
+      my $path = $prefix ? "$prefix/$key" : $key;
+      push @list, $path;
+
+      # Recursively process subdirectories
+      if ( defined $tree->{$key} && ref( $tree->{$key} ) eq 'HASH' ) {
+        push @list, $tree_to_list->( $tree->{$key}, $path );
+      }
+    }
+    return @list;
+  };
+
+  return [ $tree_to_list->($config_tree) ];
+}
+
+=head2 get_files
+
+Retrieves and processes template files for project initialization.
+
+    my $files = RInit::Manifest->get_files($project_name, $variant);
+
+Parameters:
+    $class        - Class name (method called as class method)
+    $project_name - Name of the project being initialized
+    $variant      - Language/variant code (default: 'en')
+
+Returns:
+    ArrayRef of hashrefs containing:
+        - target:  Destination path for the file
+        - source:  Source path of the template file
+        - process: Optional code ref for content transformation
+
+Dies if the share directory cannot be found.
+
+=cut
+
+sub get_files {
+  my ( $class, $project_name, $variant ) = @_;
+  $variant ||= 'en';
+
+  # Locate the template directory
+  my $share_dir = _find_share_dir();
+  die "Cannot find 'share' template directory at $share_dir" unless -d $share_dir;
+
+  my @files;
+
+  # Closure to process each file found in the share directory
+  my $loader = sub {
+    return if -d $_;    # Skip directories
+
+    my $abs_path = $File::Find::name;
+    my $rel_path = File::Spec->abs2rel( $abs_path, $share_dir );
+
+    # Skip metadata files (handled separately below)
+    return if $rel_path =~ m{^metadata/};
+
+    # Determine target filename
+    my $target = $rel_path;
+    $target = '.gitignore' if $target eq 'gitignore';    # Rename for proper dotfile handling
+    $target = '.Rprofile'  if $target eq 'Rprofile';     # Rename for proper dotfile handling
+    $target = ".$target"   if $target =~ "^pandoc[/]";
+
+    my $file_def = {
+      target => $target,
+      source => $abs_path,
+    };
+
+    # Add content processor for README.md to substitute project name
+    if ( $target eq 'README.md' ) {
+      $file_def->{process} = sub {
+        my ($content) = @_;
+        $content =~ s/__PROJECT_NAME__/$project_name/g;
+        return $content;
+      };
+    }
+
+    push @files, $file_def;
+  };
+
+  # Traverse the share directory to collect files
+  find( $loader, $share_dir );
+
+  # Add variant-specific metadata file
+  my $metadata_file = File::Spec->catfile( $share_dir, 'metadata', "metadata_${variant}.yml" );
+
+  if ( -f $metadata_file ) {
+    push @files, {
+      target  => '_metadata.yml',
+      source  => $metadata_file,
+      process => sub {
+        my ($content) = @_;
+        $content =~ s/__PROJECT_NAME__/$project_name/g;
+        return $content;
+      }
+    };
+  }
+  else {
+    warn "Metadata file for variant '$variant' not found at $metadata_file\n";
+  }
+
+  return \@files;
+}
+
+=head2 _find_share_dir
+
+Locates the share directory containing template files.
+
+Searches in the following order:
+    1. User data directory (XDG_DATA_HOME or ~/.local/share)
+    2. RINIT_SHARE_DIR environment variable
+    3. Development directory (walks up from current file)
+    4. Installed distribution directory (via File::ShareDir)
+
+Returns:
+    String path to the share directory
+
+Dies if the share directory cannot be located.
+
+=cut
+
+sub _find_share_dir {
+
+  # Define search strategies in priority order
+  my @strategies = ( \&_check_user_share, \&_check_env_share, \&_check_dev_share, \&_check_dist_share, );
+
+  # Try each strategy until a valid share directory is found
+  for my $strategy (@strategies) {
+    if ( my $dir = $strategy->() ) {
+      return $dir if _is_valid_share($dir);
+    }
+  }
+
+  # No valid share directory found
+  die "Could not locate 'share' directory.\n"
+    . "Checked: User data dir, RINIT_SHARE_DIR, Development path, and File::ShareDir.\n";
+}
+
+=head2 _check_user_share
+
+Checks for share directory in user's data directory.
+
+Returns:
+    String path to user share directory or undef
+
+=cut
+
+sub _check_user_share {
+  my $xdg_data_home = $ENV{XDG_DATA_HOME} || File::Spec->catdir( $ENV{HOME}, '.local', 'share' );
+  return File::Spec->catdir( $xdg_data_home, 'Rinit' );
+}
+
+=head2 _check_env_share
+
+Checks for share directory via RINIT_SHARE_DIR environment variable.
+
+Returns:
+    String path from environment variable or undef
+
+=cut
+
+sub _check_env_share {
+  return $ENV{RINIT_SHARE_DIR};
+}
+
+=head2 _check_dev_share
+
+Checks for share directory in development tree.
+
+Walks up from the current file location to find a share/ directory
+adjacent to Makefile.PL (indicating project root).
+
+Returns:
+    String path to development share directory or undef
+
+=cut
+
+sub _check_dev_share {
+
+  # Walk up from current file to find share/ with Makefile.PL
+  my $dir = abs_path( dirname(__FILE__) );
+
+  while ( $dir && $dir ne '/' && $dir !~ m{^[a-z]:[/\\]?$}i ) {
+    my $candidate = File::Spec->catdir( $dir, 'share' );
+
+    # Check for Makefile.PL to confirm it's a project root
+    if ( -d $candidate && -f File::Spec->catfile( $dir, 'Makefile.PL' ) ) {
+      return $candidate;
+    }
+
+    # Move up one directory level
+    my $parent = dirname($dir);
+    last if $parent eq $dir;    # Reached filesystem root
+    $dir = $parent;
+  }
+
+  return undef;
+}
+
+=head2 _check_dist_share
+
+Checks for share directory in installed distribution.
+
+Uses File::ShareDir to locate the installed share directory.
+
+Returns:
+    String path to distribution share directory or undef
+
+=cut
+
+sub _check_dist_share {
+  eval { require File::ShareDir; };
+  return if $@;
+  return eval { File::ShareDir::dist_dir('RInit') };
+}
+
+=head2 _is_valid_share
+
+Validates that a directory is a valid share directory.
+
+Parameters:
+    $dir - Directory path to validate
+
+Returns:
+    Boolean - true if directory contains required structure
+
+=cut
+
+sub _is_valid_share {
+  my ($dir) = @_;
+  return 0 unless -d $dir;
+
+  # Check for specific subdirectories that must exist in our share directory
+  return -d File::Spec->catdir( $dir, 'metadata' );
+}
+
+1;
+
+=head1 AUTHOR
+
+RInit Development Team
+
+=head1 LICENSE
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut
+</file>
+
+<file path="share/Rprofile">
+# Project-level .Rprofile
+# This file is executed when R starts in this project directory
+
+# First, source user-level .Rprofile if it exists (to preserve user settings)
+if (file.exists("~/.Rprofile")) {
+  source("~/.Rprofile")
+}
+
+# General R options
+options(
+  stringsAsFactors = FALSE,
+  max.print = 100,
+  scipen = 10,
+  width = 120,
+  box.path = c(file.path(getwd(), "r-box"), getwd())
+)
+
+# Activate renv if available
+if (file.exists("renv/activate.R")) {
+  source("renv/activate.R")
+}
+
+# ENVIRONMENT VARIABLE
+if (file.exists("_metadata.yml")) {
+  METADATA <- yaml::read_yaml("_metadata.yml")
+  PROJECT_NAME <- METADATA$project_name
+  Sys.setenv(PROJECT_NAME = PROJECT_NAME)
+} else {
+  PROJECT_NAME <- basename(getwd())
+}
+
+LOG <- tryCatch(
+  local({
+    box::use(R/utils/Logger)
+    Logger$logger_factory(PROJECT_NAME)
+  }),
+  error = function(e) NULL
+)
+
+# Project startup message
+packageStartupMessage(
+  paste0("\n", "✅ Project loaded: ", PROJECT_NAME, "\n", "📂 Working directory: ", getwd(), "\n")
+)
+</file>
+
+</files>
